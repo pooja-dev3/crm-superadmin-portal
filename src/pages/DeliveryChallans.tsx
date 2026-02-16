@@ -27,11 +27,17 @@ const DeliveryChallans: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [itemsPerPage] = useState(10)
 
-  const fetchChallans = async () => {
+  const fetchChallans = async (page: number = 1) => {
     setIsLoading(true)
     try {
-      const response = await superadminApi.getDeliveryChallans() as { success: boolean; data: any; pagination?: any }
+      const response = await superadminApi.getDeliveryChallans(page) as { success: boolean; data: any; pagination?: any }
       console.log('Delivery Challans API Response:', response)
       
       // Handle real API response structure
@@ -46,8 +52,8 @@ const DeliveryChallans: React.FC = () => {
             company: challan.comp_name || challan.to || '',
             orderId: challan.part_no,
             status: challan.status || 'pending',
-            createdDate: challan.challan_date,
-            deliveryDate: challan.challan_date, // Same as created date for now
+            createdDate: challan.created_at, // Use created_at for sorting
+            deliveryDate: challan.challan_date,
             driverName: challan.signature || '',
             driverContactNumber: '',
             notes: challan.notes || '',
@@ -65,7 +71,7 @@ const DeliveryChallans: React.FC = () => {
             company: challan.comp_name || challan.to || '',
             orderId: challan.part_no,
             status: challan.status || 'pending',
-            createdDate: challan.challan_date,
+            createdDate: challan.created_at, // Use created_at for sorting
             deliveryDate: challan.challan_date,
             driverName: challan.signature || '',
             driverContactNumber: '',
@@ -79,7 +85,29 @@ const DeliveryChallans: React.FC = () => {
         }
         
         setChallans(challansData)
+        
+        // Sort by created date (newest first) for both paginated and non-paginated responses
+        challansData.sort((a, b) => {
+          const dateA = new Date(a.createdDate)
+          const dateB = new Date(b.createdDate)
+          return dateB.getTime() - dateA.getTime() // Newest first
+        })
+        
         setFilteredChallans(challansData)
+        
+        // Handle pagination from backend if available, otherwise calculate locally
+        if (response.pagination) {
+          setCurrentPage(response.pagination.current_page)
+          setTotalPages(response.pagination.last_page)
+          setTotalItems(response.pagination.total)
+        } else {
+          // Calculate pagination locally
+          const total = challansData.length
+          const lastPage = Math.ceil(total / itemsPerPage)
+          setCurrentPage(page)
+          setTotalPages(lastPage)
+          setTotalItems(total)
+        }
         
         // Extract unique companies
         const uniqueCompanies = Array.from(new Set(challansData.filter(challan => challan && challan.company).map(challan => challan.company)))
@@ -88,12 +116,18 @@ const DeliveryChallans: React.FC = () => {
         setChallans([])
         setFilteredChallans([])
         setCompanies([])
+        setCurrentPage(1)
+        setTotalPages(1)
+        setTotalItems(0)
       }
     } catch (error) {
       console.error('Error fetching delivery challans:', error)
       setChallans([])
       setFilteredChallans([])
       setCompanies([])
+      setCurrentPage(1)
+      setTotalPages(1)
+      setTotalItems(0)
     } finally {
       setIsLoading(false)
     }
@@ -102,6 +136,26 @@ const DeliveryChallans: React.FC = () => {
   useEffect(() => {
     fetchChallans()
   }, [])
+
+  // Get paginated data for current page
+  const getPaginatedData = () => {
+    // If we have backend pagination data, use it directly
+    if (totalItems > 0 && totalPages > 1) {
+      return filteredChallans // Backend already paginated, return as-is
+    }
+    // Otherwise, apply local pagination
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return filteredChallans.slice(startIndex, endIndex)
+  }
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+      fetchChallans(page) // Fetch new page data from backend
+    }
+  }
 
   useEffect(() => {
     let filtered = challans
@@ -125,7 +179,17 @@ const DeliveryChallans: React.FC = () => {
       filtered = filtered.filter(challan => challan.status === statusFilter)
     }
 
+    // Sort by created date (newest first)
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.createdDate)
+      const dateB = new Date(b.createdDate)
+      return dateB.getTime() - dateA.getTime() // Newest first
+    })
+
     setFilteredChallans(filtered)
+    
+    // Reset to first page when filters change
+    setCurrentPage(1)
   }, [challans, searchTerm, companyFilter, statusFilter])
 
   const handleViewChallan = (challanId: string) => {
@@ -167,7 +231,7 @@ const DeliveryChallans: React.FC = () => {
           alert('Delivery challan deleted successfully')
           fetchChallans()
         } else {
-          alert('Failed to delete delivery challan: ' + (response.message || 'Unknown error'))
+          alert('Failed to delete delivery challan: ' + ((response as any).message || 'Unknown error'))
         }
       } catch (error) {
         console.error('Error deleting delivery challan:', error)
@@ -297,7 +361,7 @@ const DeliveryChallans: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredChallans.filter(challan => challan).map((challan) => (
+              {getPaginatedData().filter(challan => challan).map((challan) => (
                 <tr key={challan.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {challan.challanNumber}
@@ -356,6 +420,85 @@ const DeliveryChallans: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div className="flex-1 flex justify-between sm:hidden">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                  <span className="font-medium">
+                    {Math.min(currentPage * itemsPerPage, filteredChallans.length)}
+                  </span>{' '}
+                  of <span className="font-medium">{filteredChallans.length}</span> results
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="sr-only">Previous</span>
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                  
+                  {/* Page numbers */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        currentPage === page
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="sr-only">Next</span>
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {getPaginatedData().length === 0 && filteredChallans.length > 0 && (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No delivery challans found on this page.</p>
+          </div>
+        )}
 
         {filteredChallans.length === 0 && (
           <div className="text-center py-12">

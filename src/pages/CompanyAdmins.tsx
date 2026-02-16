@@ -252,7 +252,7 @@ const CompanyAdmins: React.FC = () => {
                       <div className="flex-shrink-0 h-10 w-10">
                         <div className="h-10 w-10 rounded-full bg-blue-900 flex items-center justify-center">
                           <span className="text-white text-sm font-medium">
-                            {admin.name.split(' ').map(n => n[0]).join('')}
+                            {admin.name.split(' ').map((n: string) => n[0]).join('')}
                           </span>
                         </div>
                       </div>

@@ -48,7 +48,7 @@ export const superadminApi = {
   getOrdersByPart: (partId: number) => apiClient.get(`/superadmin/orders/by-part/${partId}`),
 
   // Delivery Challans Management
-  getDeliveryChallans: () => apiClient.get('/superadmin/delivery-challans'),
+  getDeliveryChallans: (page: number = 1) => apiClient.get(`/superadmin/delivery-challans?page=${page}`),
   getDeliveryChallan: (id: number) => apiClient.get(`/superadmin/delivery-challans/${id}`),
   createDeliveryChallan: (data: any) => apiClient.post('/superadmin/delivery-challans', data),
   updateDeliveryChallan: (id: number, data: any) => apiClient.put(`/superadmin/delivery-challans/${id}`, data),

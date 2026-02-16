@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { superadminApi } from '../services/superadminApi'
+import { customerApi, partApi } from '../services'
 import type { DeliveryChallan, UpdateDeliveryChallanRequest } from '../services/deliveryChallans'
-import { customerApi } from '../services'
 
 interface EditDeliveryChallanModalProps {
   isOpen: boolean
@@ -12,28 +12,65 @@ interface EditDeliveryChallanModalProps {
 }
 
 const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isOpen, onClose, onSuccess, challan }) => {
+  // Helper function to format date for input field
+  const formatDateForInput = (dateString: string | null | undefined): string => {
+    if (!dateString) return ''
+    // Handle various date formats and return yyyy-MM-dd
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return ''
+    return date.toISOString().split('T')[0]
+  }
+
   const [formData, setFormData] = useState<UpdateDeliveryChallanRequest>({
-    challanNumber: '',
-    company: '',
-    orderId: '',
-    status: 'pending',
-    deliveryDate: ''
+    challan_no: '',
+    comp_name: '',
+    customer_id: null,
+    challan_date: '',
+    to: '',
+    from: '',
+    part_id: null,
+    part_no: '',
+    part_description: '',
+    hsn_code: '',
+    quantity: 1,
+    unit_rate: '0.00',
+    total: '0.00',
+    notes: null,
+    signature: null,
+    status: 'pending'
   })
   const [companies, setCompanies] = useState<any[]>([])
+  const [parts, setParts] = useState<any[]>([])
+  const [customers, setCustomers] = useState<any[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Partial<UpdateDeliveryChallanRequest>>({})
 
   useEffect(() => {
     if (challan && isOpen) {
+      console.log('Prefilling form with challan data:', challan)
+      
       setFormData({
-        challanNumber: challan.challanNumber,
-        company: challan.company,
-        orderId: challan.orderId,
-        status: challan.status,
-        deliveryDate: challan.deliveryDate || ''
+        challan_no: challan.challan_no || challan.challanNumber || '',
+        comp_name: (challan.comp_name || challan.company) || (challan.company || ''),
+        customer_id: challan.customer_id || challan.customer?.id || null,
+        challan_date: challan.challan_date || challan.createdDate || '',
+        to: challan.to || (challan.comp_name || challan.company || ''),
+        from: challan.from || '',
+        part_id: challan.part_id || challan.part?.id || null,
+        part_no: challan.part_no || challan.orderId || '',
+        part_description: challan.partDescription || '',
+        hsn_code: challan.hsn_code || challan.hsnCode || '',
+        quantity: challan.quantity || 1,
+        unit_rate: challan.unit_rate || challan.unitRate || '0.00',
+        total: challan.total || '0.00',
+        notes: challan.notes || null,
+        signature: challan.signature || null,
+        status: challan.status || 'pending'
       })
       setErrors({})
       fetchCompanies()
+      fetchParts()
+      fetchCustomers()
     }
   }, [challan, isOpen])
 
@@ -44,17 +81,56 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
         let companiesData: any[] = []
         
         if (Array.isArray(response.data)) {
-          // Real API returns simple array: { success: true, data: [...] }
           companiesData = response.data
-        } else if (response.data && Array.isArray(response.data.data)) {
-          // Mock API returns paginated: { success: true, data: { data: [...] } }
+        } else if (response.data.data && Array.isArray(response.data.data)) {
           companiesData = response.data.data
         }
         
         setCompanies(companiesData)
+        console.log('Companies loaded for dropdown:', companiesData.length, companiesData)
       }
     } catch (error) {
       console.error('Error fetching companies:', error)
+    }
+  }
+
+  const fetchParts = async () => {
+    try {
+      const response = await partApi.getAllParts()
+      if (response.success) {
+        let partsData: any[] = []
+        
+        if (Array.isArray(response.data)) {
+          partsData = response.data
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          partsData = response.data.data
+        }
+        
+        setParts(partsData)
+        console.log('Parts loaded for dropdown:', partsData.length, partsData)
+      }
+    } catch (error) {
+      console.error('Error fetching parts:', error)
+    }
+  }
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await customerApi.getAllCustomers()
+      if (response.success) {
+        let customersData: any[] = []
+        
+        if (Array.isArray(response.data)) {
+          customersData = response.data
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          customersData = response.data.data
+        }
+        
+        setCustomers(customersData)
+        console.log('Customers loaded for dropdown:', customersData.length, customersData)
+      }
+    } catch (error) {
+      console.error('Error fetching customers:', error)
     }
   }
 
@@ -71,14 +147,54 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.challanNumber?.trim()) {
-      newErrors.challanNumber = 'Challan number is required'
+    // All fields are mandatory
+    if (!formData.challan_no?.trim()) {
+      newErrors.challan_no = 'Challan number is required'
     }
-    if (!formData.company?.trim()) {
-      newErrors.company = 'Company is required'
+    if (!formData.comp_name?.trim()) {
+      newErrors.comp_name = 'Company is required'
     }
-    if (!formData.orderId?.trim()) {
-      newErrors.orderId = 'Order ID is required'
+    if (!formData.customer_id) {
+      newErrors.customer_id = 'Customer is required'
+    }
+    if (!formData.challan_date?.trim()) {
+      newErrors.challan_date = 'Delivery date is required'
+    }
+    if (!formData.to?.trim()) {
+      newErrors.to = 'To field is required'
+    }
+    if (!formData.from?.trim()) {
+      newErrors.from = 'From field is required'
+    }
+    if (!formData.part_id) {
+      newErrors.part_id = 'Part is required'
+    }
+    if (!formData.part_no?.trim()) {
+      newErrors.part_no = 'Part number is required'
+    }
+    if (!formData.part_description?.trim()) {
+      newErrors.part_description = 'Part description is required'
+    }
+    if (!formData.hsn_code?.trim()) {
+      newErrors.hsn_code = 'HSN code is required'
+    }
+    if (!formData.quantity || formData.quantity <= 0) {
+      newErrors.quantity = 'Quantity must be greater than 0'
+    }
+    if (!formData.unit_rate?.trim()) {
+      newErrors.unit_rate = 'Unit rate is required'
+    }
+    if (!formData.total?.trim()) {
+      newErrors.total = 'Total is required'
+    }
+    if (!formData.challan_date?.trim()) {
+      newErrors.challan_date = 'Challan date is required'
+    }
+    if (!formData.signature?.trim()) {
+      newErrors.signature = 'Signature is required'
+    }
+    if (!formData.notes?.trim()) {
+      newErrors.notes = 'Notes are required'
     }
     if (!formData.status) {
       newErrors.status = 'Status is required'
@@ -91,18 +207,50 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    console.log('Form data being submitted:', formData)
+    console.log('Challan ID:', challan?.id, 'Type:', typeof challan?.id)
+    
     if (!validateForm() || !challan) return
-
+    
+    // Ensure part_id and customer_id are valid before sending (same as Add modal)
+    const submitData = {
+      ...formData,
+      part_id: formData.part_id && formData.part_id > 0 ? formData.part_id : null,
+      customer_id: formData.customer_id && formData.customer_id > 0 ? formData.customer_id : null
+    }
+    
+    console.log('Processed submit data:', submitData)
+    
     setIsSubmitting(true)
     try {
-      const response = await superadminApi.updateDeliveryChallan(parseInt(challan.id), formData) as { success: boolean }
-      if (response.success) {
+      const challanId = parseInt(challan?.id || '0')
+      console.log('Parsed challan ID:', challanId)
+      
+      const response = await superadminApi.updateDeliveryChallan(challanId, submitData)
+      console.log('Raw API Response:', response)
+      console.log('Response type:', typeof response)
+      console.log('Response success:', response?.success)
+      console.log('Response data:', response?.data)
+      console.log('Response message:', response?.message)
+      
+      // Handle different response formats
+      const isSuccess = response?.success || response?.data?.success
+      const message = response?.message || response?.data?.message || 'Update completed'
+      
+      console.log('Is success:', isSuccess)
+      console.log('Final message:', message)
+      
+      if (isSuccess) {
+        console.log('Update successful, calling onSuccess and closing modal')
         onSuccess()
         handleClose()
+      } else {
+        console.error('API Error Response:', response)
+        alert(`Failed to update delivery challan: ${message}`)
       }
     } catch (error) {
       console.error('Error updating delivery challan:', error)
-      alert('Failed to update delivery challan')
+      alert('Failed to update delivery challan: ' + (error as Error).message)
     } finally {
       setIsSubmitting(false)
     }
@@ -110,11 +258,21 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
 
   const handleClose = () => {
     setFormData({
-      challanNumber: '',
-      company: '',
-      orderId: '',
-      status: 'pending',
-      deliveryDate: ''
+      challan_no: '',
+      comp_name: '',
+      customer_id: null,
+      challan_date: '',
+      to: '',
+      from: '',
+      part_id: null,
+      part_no: '',
+      part_description: '',
+      hsn_code: '',
+      quantity: 1,
+      unit_rate: '0.00',
+      total: '0.00',
+      notes: null,
+      signature: null
     })
     setErrors({})
     onClose()
@@ -153,108 +311,299 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="challanNumber" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="challan_no" className="block text-sm font-medium text-gray-700">
                       Challan Number *
                     </label>
                     <input
                       type="text"
-                      id="challanNumber"
-                      name="challanNumber"
-                      value={formData.challanNumber}
+                      id="challan_no"
+                      name="challan_no"
+                      value={formData.challan_no}
                       onChange={handleInputChange}
                       className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.challanNumber ? 'border-red-300' : 'border-gray-300'
+                        errors.challan_no ? 'border-red-300' : 'border-gray-300'
                       }`}
                       placeholder="Enter challan number"
                       disabled={isSubmitting}
                     />
-                    {errors.challanNumber && (
-                      <p className="mt-1 text-sm text-red-600">{errors.challanNumber}</p>
+                    {errors.challan_no && (
+                      <p className="mt-1 text-sm text-red-600">{errors.challan_no}</p>
                     )}
                   </div>
 
                   <div>
-                    <label htmlFor="company" className="block text-sm font-medium text-gray-700">
-                      Company *
+                    <label htmlFor="to" className="block text-sm font-medium text-gray-700">
+                      Company/Recipient *
                     </label>
                     <select
-                      id="company"
-                      name="company"
-                      value={formData.company}
+                      id="to"
+                      name="to"
+                      value={formData.to}
                       onChange={handleInputChange}
                       className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.company ? 'border-red-300' : 'border-gray-300'
+                        errors.to ? 'border-red-300' : 'border-gray-300'
                       }`}
                       disabled={isSubmitting}
                     >
-                      <option value="">Select a company</option>
+                      <option value="">Select company</option>
                       {companies.map((company) => (
-                        <option key={company.id} value={company.comp_name || company.name}>
-                          {company.comp_name || company.name}
+                        <option key={company.id} value={company.company_name || company.comp_name || company.name}>
+                          {company.company_name || company.comp_name || company.name}
                         </option>
                       ))}
                     </select>
-                    {errors.company && (
-                      <p className="mt-1 text-sm text-red-600">{errors.company}</p>
+                    {errors.to && (
+                      <p className="mt-1 text-sm text-red-600">{errors.to}</p>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="orderId" className="block text-sm font-medium text-gray-700">
-                    Order ID *
+                  <label htmlFor="part_id" className="block text-sm font-medium text-gray-700">
+                    Part *
+                  </label>
+                  <select
+                    id="part_id"
+                    name="part_id"
+                    value={formData.part_id || ''}
+                    onChange={(e) => {
+                      const selectedPartId = e.target.value ? Number(e.target.value) : null
+                      const selectedPart = parts.find(part => part.id === selectedPartId)
+                      setFormData(prev => ({
+                        ...prev,
+                        part_id: selectedPartId,
+                        part_no: selectedPart?.part_no || '',
+                        part_description: selectedPart?.part_description || '',
+                        hsn_code: selectedPart?.hsn_code || ''
+                      }))
+                    }}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                      errors.part_id ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    disabled={isSubmitting}
+                  >
+                    <option value="">Select part</option>
+                    {parts.map((part) => (
+                      <option key={part.id} value={part.id}>
+                        {part.part_no} - {part.part_description}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.part_id && (
+                    <p className="mt-1 text-sm text-red-600">{errors.part_id}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="part_no" className="block text-sm font-medium text-gray-700">
+                    Part Number *
                   </label>
                   <input
                     type="text"
-                    id="orderId"
-                    name="orderId"
-                    value={formData.orderId}
+                    id="part_no"
+                    name="part_no"
+                    value={formData.part_no}
                     onChange={handleInputChange}
                     className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.orderId ? 'border-red-300' : 'border-gray-300'
+                      errors.part_no ? 'border-red-300' : 'border-gray-300'
                     }`}
-                    placeholder="Enter order ID"
+                    placeholder="Enter part number"
                     disabled={isSubmitting}
                   />
-                  {errors.orderId && (
-                    <p className="mt-1 text-sm text-red-600">{errors.orderId}</p>
+                  {errors.part_no && (
+                    <p className="mt-1 text-sm text-red-600">{errors.part_no}</p>
                   )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-                      Status *
+                    <label htmlFor="from" className="block text-sm font-medium text-gray-700">
+                      From *
                     </label>
-                    <select
-                      id="status"
-                      name="status"
-                      value={formData.status}
+                    <input
+                      type="text"
+                      id="from"
+                      name="from"
+                      value={formData.from}
                       onChange={handleInputChange}
                       className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.status ? 'border-red-300' : 'border-gray-300'
+                        errors.from ? 'border-red-300' : 'border-gray-300'
                       }`}
+                      placeholder="Enter from location"
                       disabled={isSubmitting}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="in_transit">In Transit</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                    {errors.status && (
-                      <p className="mt-1 text-sm text-red-600">{errors.status}</p>
+                    />
+                    {errors.from && (
+                      <p className="mt-1 text-sm text-red-600">{errors.from}</p>
                     )}
                   </div>
 
                   <div>
-                    <label htmlFor="deliveryDate" className="block text-sm font-medium text-gray-700">
-                      Delivery Date
+                    <label htmlFor="part_description" className="block text-sm font-medium text-gray-700">
+                      Part Description *
+                    </label>
+                    <input
+                      type="text"
+                      id="part_description"
+                      name="part_description"
+                      value={formData.part_description}
+                      onChange={handleInputChange}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                        errors.part_description ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter part description"
+                      disabled={isSubmitting}
+                    />
+                    {errors.part_description && (
+                      <p className="mt-1 text-sm text-red-600">{errors.part_description}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
+                      Customer *
+                    </label>
+                    <select
+                      id="customer_id"
+                      name="customer_id"
+                      value={formData.customer_id?.toString() || ''}
+                      onChange={handleInputChange}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                        errors.customer_id ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      disabled={isSubmitting}
+                    >
+                      <option value="">Select customer</option>
+                      {customers.map((customer) => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.customer_id && (
+                      <p className="mt-1 text-sm text-red-600">{errors.customer_id}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="hsn_code" className="block text-sm font-medium text-gray-700">
+                      HSN Code *
+                    </label>
+                    <input
+                      type="text"
+                      id="hsn_code"
+                      name="hsn_code"
+                      value={formData.hsn_code}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                      placeholder="Enter HSN code"
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
+                      Quantity *
+                    </label>
+                    <input
+                      type="number"
+                      id="quantity"
+                      name="quantity"
+                      value={formData.quantity}
+                      onChange={handleInputChange}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                        errors.quantity ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter quantity"
+                      min="1"
+                      disabled={isSubmitting}
+                    />
+                    {errors.quantity && (
+                      <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="unit_rate" className="block text-sm font-medium text-gray-700">
+                      Unit Rate *
+                    </label>
+                    <input
+                      type="text"
+                      id="unit_rate"
+                      name="unit_rate"
+                      value={formData.unit_rate}
+                      onChange={handleInputChange}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                        errors.unit_rate ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter unit rate"
+                      disabled={isSubmitting}
+                    />
+                    {errors.unit_rate && (
+                      <p className="mt-1 text-sm text-red-600">{errors.unit_rate}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="total" className="block text-sm font-medium text-gray-700">
+                    Total Amount *
+                  </label>
+                  <input
+                    type="text"
+                    id="total"
+                    name="total"
+                    value={formData.total}
+                    onChange={handleInputChange}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                      errors.total ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="Enter total amount"
+                    disabled={isSubmitting}
+                  />
+                  {errors.total && (
+                    <p className="mt-1 text-sm text-red-600">{errors.total}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                    Status *
+                  </label>
+                  <select
+                    id="status"
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                      errors.status ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    disabled={isSubmitting}
+                  >
+                    <option value="">Select status</option>
+                    <option value="pending">Pending</option>
+                    <option value="in_transit">In Transit</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                  {errors.status && (
+                    <p className="mt-1 text-sm text-red-600">{errors.status}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="challan_date" className="block text-sm font-medium text-gray-700">
+                      Challan Date
                     </label>
                     <input
                       type="date"
-                      id="deliveryDate"
-                      name="deliveryDate"
-                      value={formData.deliveryDate}
+                      id="challan_date"
+                      name="challan_date"
+                      value={formatDateForInput(formData.challan_date)}
                       onChange={handleInputChange}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
                       disabled={isSubmitting}

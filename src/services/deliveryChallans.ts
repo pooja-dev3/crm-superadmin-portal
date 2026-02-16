@@ -11,34 +11,83 @@ export interface DeliveryChallan {
   deliveryDate?: string
   driverName?: string
   driverContactNumber?: string
+  // New fields for Edit form compatibility
+  customer?: {
+    id: number
+    name: string
+    address?: string
+    contact_no?: string
+    gst_no?: string
+    comp_code?: string
+  }
+  to?: string
+  from?: string
+  part?: {
+    id: number
+    part_description: string
+    drawing_no?: string
+    rev_no?: string
+    net_wt?: string
+    thickness?: string
+    tool_information?: string
+    raw_material?: string
+    drawing_location?: string
+    operation_sequence?: string
+    lead_time?: number
+  }
+  partDescription?: string
+  hsnCode?: string
+  quantity?: number
+  unitRate?: string
+  total?: string
+  notes?: string | null
+  signature?: string | null
+  // Additional fields for Edit form
+  challan_no?: string
+  comp_name?: string
+  customer_id?: number | null
+  challan_date?: string
+  part_id?: number | null
+  part_no?: string
+  hsn_code?: string
+  unit_rate?: string
 }
 
 export interface CreateDeliveryChallanRequest {
+  challan_no: string
+  comp_name: string
+  customer_id: number | null
   challan_date: string
-  to: string // Company/recipient name
+  to: string
   from: string
-  part_id?: number | null
+  part_id: number | null
   part_no: string
   part_description: string
   hsn_code: string
   quantity: number
   unit_rate: string
   total: string
-  notes?: string | null
-  signature?: string | null
-  customer_id?: number | null
-  driver_name?: string
-  driver_contact_number?: string
+  notes: string | null
+  signature: string | null
 }
 
 export interface UpdateDeliveryChallanRequest {
-  challanNumber?: string
-  company?: string
-  orderId?: string
+  challan_no?: string
+  comp_name?: string
+  customer_id?: number | null
+  challan_date?: string
+  to?: string
+  from?: string
+  part_id?: number | null
+  part_no?: string
+  part_description?: string
+  hsn_code?: string
+  quantity?: number
+  unit_rate?: string
+  total?: string
+  notes?: string | null
+  signature?: string | null
   status?: 'pending' | 'in_transit' | 'delivered' | 'cancelled'
-  deliveryDate?: string
-  driverName?: string
-  driverContactNumber?: string
 }
 
 export interface PaginatedDeliveryChallansResponse {

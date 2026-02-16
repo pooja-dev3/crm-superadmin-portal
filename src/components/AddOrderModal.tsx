@@ -253,8 +253,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                   >
                     <option value="">Select a company</option>
                     {companies.map(company => (
-                      <option key={company.id} value={company.company_name}>
-                        {company.company_name}
+                      <option key={company.id} value={company.comp_name}>
+                        {company.comp_name}
                       </option>
                     ))}
                   </select>

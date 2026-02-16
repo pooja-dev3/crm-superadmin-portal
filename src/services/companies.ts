@@ -9,7 +9,6 @@ export interface Company {
   phone: string
   gst_no: string
   code: string
-  phno: string
   is_active: boolean
   created_at: string
   updated_at: string

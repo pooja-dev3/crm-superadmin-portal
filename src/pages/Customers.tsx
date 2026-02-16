@@ -42,14 +42,14 @@ const Customers: React.FC = () => {
       if (response.success) {
         if (Array.isArray(response.data)) {
           // Real API returns simple array: { success: true, data: [...] }
-          const sortedCustomers = response.data.sort((a, b) => 
+          const sortedCustomers = response.data.sort((a: any, b: any) => 
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
           setCustomers(sortedCustomers)
           setFilteredCustomers(sortedCustomers)
         } else if (response.data && Array.isArray(response.data.data)) {
           // Mock API returns paginated: { success: true, data: { data: [...] } }
-          const sortedCustomers = response.data.data.sort((a, b) => 
+          const sortedCustomers = response.data.data.sort((a: any, b: any) => 
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
           setCustomers(sortedCustomers)

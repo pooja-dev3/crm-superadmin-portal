@@ -25,7 +25,7 @@ interface Customer {
 // Use the real PartWithCustomer type from types/api.ts
 
 interface CompanyFormData {
-  company_name: string
+  comp_name: string
   email: string
   address: string
   phone: string
@@ -99,7 +99,7 @@ const CompanyDetail: React.FC = () => {
           ? customersResponse.data 
           : customersResponse.data?.data || []
         const companyCustomers = customersData.filter((cust: any) => 
-          cust.company === companyData.company_name || cust.comp_name === companyData.company_name
+          cust.comp_name === companyData.comp_name || cust.comp_name === companyData.comp_name
         )
         setCustomers(companyCustomers)
       }
@@ -109,8 +109,8 @@ const CompanyDetail: React.FC = () => {
           ? ordersResponse.data 
           : ordersResponse.data?.data || []
         const companyOrders = ordersData.filter((order: any) => 
-          order.customer?.company === companyData.company_name || 
-          order.comp_name === companyData.company_name
+          order.customer?.comp_name === companyData.comp_name || 
+          order.comp_name === companyData.comp_name
         )
         setOrders(companyOrders)
       }
@@ -120,9 +120,9 @@ const CompanyDetail: React.FC = () => {
           ? challansResponse.data
           : challansResponse.data?.data || []
         const companyChallans = challansData.filter((challan: any) => 
-          challan.company === companyData.company_name || 
-          challan.to === companyData.company_name ||
-          challan.comp_name === companyData.company_name
+          challan.comp_name === companyData.comp_name || 
+          challan.to === companyData.comp_name ||
+          challan.comp_name === companyData.comp_name
         )
         setDeliveryChallans(companyChallans)
       }
@@ -132,7 +132,7 @@ const CompanyDetail: React.FC = () => {
           ? partsResponse.data
           : partsResponse.data?.data || []
         const companyParts = partsData.filter((part: PartWithCustomer) => 
-          part.customer?.name === companyData.company_name
+          part.customer?.name === companyData.comp_name
         )
         setParts(companyParts)
       }
@@ -144,10 +144,10 @@ const CompanyDetail: React.FC = () => {
         
         // Filter by role and company
         const companySupervisors = adminsData.filter((admin: any) => 
-          admin.company === companyData.company_name && (admin.role === 'supervisor' || admin.role === 'manager')
+          admin.company === companyData.comp_name && (admin.role === 'supervisor' || admin.role === 'manager')
         )
         const companyOperators = adminsData.filter((admin: any) => 
-          admin.company === companyData.company_name && admin.role === 'operator'
+          admin.company === companyData.comp_name && admin.role === 'operator'
         )
         
         setSupervisors(companySupervisors)
@@ -169,9 +169,9 @@ const CompanyDetail: React.FC = () => {
         <div className="bg-blue-900 px-6 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-white">{company.company_name}</h2>
+              <h2 className="text-2xl font-bold text-white">{company?.comp_name || ''}</h2>
               <div className="flex items-center mt-2">
-                {company.is_active ? (
+                {company?.is_active ? (
                   <span className="flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     <CheckCircle className="w-4 h-4 mr-1" />
                     Active
@@ -195,7 +195,7 @@ const CompanyDetail: React.FC = () => {
               <Mail className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
               <div>
                 <p className="text-sm font-medium text-gray-900">Email</p>
-                <p className="text-sm text-gray-600">{company.email}</p>
+                <p className="text-sm text-gray-600">{company?.email || ''}</p>
               </div>
             </div>
 
@@ -203,7 +203,7 @@ const CompanyDetail: React.FC = () => {
               <Phone className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
               <div>
                 <p className="text-sm font-medium text-gray-900">Phone</p>
-                <p className="text-sm text-gray-600">{company.phone}</p>
+                <p className="text-sm text-gray-600">{company?.phone || ''}</p>
               </div>
             </div>
 
@@ -211,7 +211,7 @@ const CompanyDetail: React.FC = () => {
               <MapPin className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
               <div>
                 <p className="text-sm font-medium text-gray-900">Address</p>
-                <p className="text-sm text-gray-600">{company.address || 'No address provided'}</p>
+                <p className="text-sm text-gray-600">{company?.address || 'No address provided'}</p>
               </div>
             </div>
 
@@ -219,7 +219,7 @@ const CompanyDetail: React.FC = () => {
               <FileText className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
               <div>
                 <p className="text-sm font-medium text-gray-900">GST Number</p>
-                <p className="text-sm text-gray-600">{company.gst_no}</p>
+                <p className="text-sm text-gray-600">{company?.gst_no || ''}</p>
               </div>
             </div>
           </div>
@@ -511,7 +511,7 @@ const CompanyDetail: React.FC = () => {
     
     try {
       const response = await companyApi.updateCompany(company.id, {
-        comp_name: companyData.company_name,
+        comp_name: companyData.comp_name,
         email: companyData.email,
         address: companyData.address,
         phno: companyData.phone,
@@ -534,8 +534,8 @@ const CompanyDetail: React.FC = () => {
     if (!company) return
     
     const confirmMessage = company.is_active 
-      ? `Are you sure you want to deactivate "${company.company_name}"?`
-      : `Are you sure you want to activate "${company.company_name}"?`
+      ? `Are you sure you want to deactivate "${company.comp_name}"?`
+      : `Are you sure you want to activate "${company.comp_name}"?`
     
     if (confirm(confirmMessage)) {
       try {

@@ -160,7 +160,7 @@ const Orders: React.FC = () => {
           // Refresh orders list
           await fetchOrders()
         } else {
-          alert('Failed to delete order: ' + (response.message || 'Unknown error'))
+          alert('Failed to delete order: ' + ((response as any).message || 'Unknown error'))
         }
       } catch (error) {
         console.error('Error deleting order:', error)

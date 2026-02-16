@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { X, Calendar, User, Package, FileText, DollarSign } from 'lucide-react'
 import { superadminApi } from '../services/superadminApi'
 import type { CreateDeliveryChallanRequest } from '../services/deliveryChallans'
-import { companyApi } from '../services'
+import { companyApi, customerApi } from '../services'
 
 interface DeliveryChallanErrors {
   challan_no?: string
@@ -19,6 +19,7 @@ interface DeliveryChallanErrors {
   notes?: string
   signature?: string
   comp_name?: string
+  customer_id?: string
 }
 
 interface AddDeliveryChallanModalProps {
@@ -30,25 +31,24 @@ interface AddDeliveryChallanModalProps {
 const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState<CreateDeliveryChallanRequest>({
     challan_no: '',
+    comp_name: '',
+    customer_id: null,
     challan_date: '',
     to: '',
     from: '',
-    part_id: null, // Changed from 0 to null
+    part_id: null,
     part_no: '',
     part_description: '',
     hsn_code: '',
     quantity: 1,
     unit_rate: '0.00',
     total: '0.00',
-    notes: null, // Changed to null to match API
-    signature: null, // Changed to null to match API
-    comp_name: '',
-    customer_id: null, // Added missing field
-    driver_name: '', // Added missing field
-    driver_contact_number: '' // Added missing field
+    notes: null,
+    signature: null
   })
   const [companies, setCompanies] = useState<any[]>([])
   const [parts, setParts] = useState<any[]>([])
+  const [customers, setCustomers] = useState<any[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<DeliveryChallanErrors>({})
 
@@ -70,9 +70,10 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
       }))
       setErrors({})
       
-      // Fetch companies and parts for dropdowns
+      // Fetch companies, parts and customers for dropdowns
       fetchCompanies()
       fetchParts()
+      fetchCustomers()
     }
   }, [isOpen])
 
@@ -116,13 +117,44 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
     }
   }
 
+  const fetchCustomers = async () => {
+    try {
+      const response = await customerApi.getAllCustomers()
+      if (response.success) {
+        let customersData: any[] = []
+        
+        if (Array.isArray(response.data)) {
+          customersData = response.data
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          customersData = response.data.data
+        }
+        
+        setCustomers(customersData)
+        console.log('Customers loaded for dropdown:', customersData.length, customersData)
+      }
+    } catch (error) {
+      console.error('Error fetching customers:', error)
+    }
+  }
+
+  // Helper function to format date for input field
+  const formatDateForInput = (dateString: string | null): string => {
+    if (!dateString) return ''
+    // Handle various date formats and return yyyy-MM-dd
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return ''
+    return date.toISOString().split('T')[0]
+  }
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
-    let processedValue: string | number = value
+    let processedValue: string | number | null = value
     
-    // Convert to number for quantity field
+    // Convert to number for quantity and customer_id fields
     if (name === 'quantity' && type === 'number') {
       processedValue = value === '' ? 0 : Number(value)
+    } else if (name === 'customer_id') {
+      processedValue = value === '' ? null : Number(value)
     }
     
     // If company is selected, also set comp_name
@@ -166,6 +198,15 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
     if (!formData.part_id) {
       newErrors.part_id = 'Part selection is required'
     }
+    if (!formData.customer_id) {
+      newErrors.customer_id = 'Customer selection is required'
+    }
+    if (!formData.part_no.trim()) {
+      newErrors.part_no = 'Part number is required'
+    }
+    if (!formData.part_description.trim()) {
+      newErrors.part_description = 'Part description is required'
+    }
     if (!formData.quantity || typeof formData.quantity !== 'number' || formData.quantity <= 0) {
       newErrors.quantity = 'Quantity must be greater than 0'
     }
@@ -187,10 +228,11 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
       return
     }
     
-    // Ensure part_id is valid before sending
+    // Ensure part_id and customer_id are valid before sending
     const submitData = {
       ...formData,
-      part_id: formData.part_id && formData.part_id > 0 ? formData.part_id : null
+      part_id: formData.part_id && formData.part_id > 0 ? formData.part_id : null,
+      customer_id: formData.customer_id && formData.customer_id > 0 ? formData.customer_id : null
     }
     
     setIsSubmitting(true)
@@ -210,19 +252,20 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
   const handleClose = () => {
     setFormData({
       challan_no: '',
+      comp_name: '',
+      customer_id: null,
       challan_date: '',
       to: '',
       from: '',
-      part_id: 0,
+      part_id: null,
       part_no: '',
       part_description: '',
       hsn_code: '',
-      quantity: 0,
+      quantity: 1,
       unit_rate: '0.00',
       total: '0.00',
-      notes: '',
-      signature: '',
-      comp_name: ''
+      notes: null,
+      signature: null
     })
     setErrors({})
     onClose()
@@ -344,6 +387,27 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                   )}
                 </div>
 
+                <div>
+                  <label htmlFor="part_no" className="block text-sm font-medium text-gray-700">
+                    Part Number *
+                  </label>
+                  <input
+                    type="text"
+                    id="part_no"
+                    name="part_no"
+                    value={formData.part_no}
+                    onChange={handleChange}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                      errors.part_no ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="Enter part number"
+                    disabled={isSubmitting}
+                  />
+                  {errors.part_no && (
+                    <p className="mt-1 text-sm text-red-600">{errors.part_no}</p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="from" className="block text-sm font-medium text-gray-700">
@@ -388,7 +452,33 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
+                      Customer *
+                    </label>
+                    <select
+                      id="customer_id"
+                      name="customer_id"
+                      value={formData.customer_id?.toString() || ''}
+                      onChange={handleChange}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                        errors.customer_id ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      disabled={isSubmitting}
+                    >
+                      <option value="">Select customer</option>
+                      {customers.map((customer) => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.customer_id && (
+                      <p className="mt-1 text-sm text-red-600">{errors.customer_id}</p>
+                    )}
+                  </div>
+
                   <div>
                     <label htmlFor="hsn_code" className="block text-sm font-medium text-gray-700">
                       HSN Code
@@ -404,6 +494,9 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                       disabled={isSubmitting}
                     />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                   <div>
                     <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
@@ -479,7 +572,7 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                       type="date"
                       id="challan_date"
                       name="challan_date"
-                      value={formData.challan_date}
+                      value={formatDateForInput(formData.challan_date)}
                       onChange={handleChange}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
                       disabled={isSubmitting}
@@ -494,7 +587,7 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                       type="text"
                       id="signature"
                       name="signature"
-                      value={formData.signature}
+                      value={formData.signature || ''}
                       onChange={handleChange}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
                       placeholder="Enter authorized signature"
@@ -510,7 +603,7 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                   <textarea
                     id="notes"
                     name="notes"
-                    value={formData.notes}
+                    value={formData.notes || ''}
                     onChange={handleChange}
                     rows={3}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"

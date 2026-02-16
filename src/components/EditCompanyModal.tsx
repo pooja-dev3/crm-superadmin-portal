@@ -10,7 +10,7 @@ interface EditCompanyModalProps {
 }
 
 interface CompanyFormData {
-  company_name: string
+  comp_name: string
   email: string
   address: string
   phone: string
@@ -25,7 +25,7 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
   company 
 }) => {
   const [formData, setFormData] = useState<CompanyFormData>({
-    company_name: '',
+    comp_name: '',
     email: '',
     address: '',
     phone: '',
@@ -38,7 +38,7 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
   useEffect(() => {
     if (company) {
       setFormData({
-        company_name: company.company_name,
+        comp_name: company.comp_name,
         email: company.email,
         address: company.address,
         phone: company.phone,
@@ -64,14 +64,14 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
     const newErrors: Partial<CompanyFormData> = {}
     
     // Company Name validation
-    if (!formData.company_name.trim()) {
-      newErrors.company_name = 'Company name is required'
-    } else if (formData.company_name.trim().length < 2) {
-      newErrors.company_name = 'Company name must be at least 2 characters'
-    } else if (formData.company_name.trim().length > 200) {
-      newErrors.company_name = 'Company name must be less than 200 characters'
-    } else if (!/^[a-zA-Z0-9\s&.,'-]+$/.test(formData.company_name.trim())) {
-      newErrors.company_name = 'Company name contains invalid characters'
+    if (!formData.comp_name.trim()) {
+      newErrors.comp_name = 'Company name is required'
+    } else if (formData.comp_name.trim().length < 2) {
+      newErrors.comp_name = 'Company name must be at least 2 characters'
+    } else if (formData.comp_name.trim().length > 200) {
+      newErrors.comp_name = 'Company name must be less than 200 characters'
+    } else if (!/^[a-zA-Z0-9\s&.,'-]+$/.test(formData.comp_name.trim())) {
+      newErrors.comp_name = 'Company name contains invalid characters'
     }
     
     // Email validation
@@ -164,22 +164,22 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
 
             <form id="edit-company-form" onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="company_name" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="comp_name" className="block text-sm font-medium text-gray-700">
                   Company Name *
                 </label>
                 <input
                   type="text"
-                  id="company_name"
-                  name="company_name"
-                  value={formData.company_name}
+                  id="comp_name"
+                  name="comp_name"
+                  value={formData.comp_name}
                   onChange={handleInputChange}
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                    errors.company_name ? 'border-red-300' : 'border-gray-300'
+                    errors.comp_name ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Enter company name"
                 />
-                {errors.company_name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.company_name}</p>
+                {errors.comp_name && (
+                  <p className="mt-1 text-sm text-red-600">{errors.comp_name}</p>
                 )}
               </div>
 

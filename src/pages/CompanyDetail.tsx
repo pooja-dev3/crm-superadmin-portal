@@ -127,10 +127,8 @@ const CompanyDetail: React.FC = () => {
         setDeliveryChallans(companyChallans)
       }
 
-      if (partsResponse.success) {
-        const partsData = Array.isArray(partsResponse.data)
-          ? partsResponse.data
-          : partsResponse.data?.data || []
+      if (partsResponse.success && partsResponse.data) {
+        const partsData = Array.isArray(partsResponse.data) ? partsResponse.data : []
         const companyParts = partsData.filter((part: PartWithCustomer) => 
           part.customer?.name === companyData.comp_name
         )

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { superadminApi } from '../services/superadminApi'
+import type { ApiResponse } from '../types/api'
 
 interface AddAdminModalProps {
   isOpen: boolean
@@ -9,7 +10,7 @@ interface AddAdminModalProps {
 }
 
 const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const [formData, setFormData] = useState<any>({
+  const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
@@ -20,7 +21,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
     is_active: true
   })
   const [isLoading, setIsLoading] = useState(false)
-  const [errors, setErrors] = useState<Partial<any>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [companies, setCompanies] = useState<any[]>([])
   const [selectedCompany, setSelectedCompany] = useState<any>(null)
   const [isLoadingCompanies, setIsLoadingCompanies] = useState(false)
@@ -32,8 +33,8 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }))
     // Clear error for this field when user starts typing
-    if (errors[name as keyof any]) {
-      setErrors((prev: any) => ({ ...prev, [name]: '' }))
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: '' }))
     }
   }
 
@@ -43,13 +44,13 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
     
     if (company) {
       setSelectedCompany(company)
-      setFormData((prev: any) => ({
+      setFormData((prev) => ({
         ...prev,
         comp_code: company.code
       }))
     } else {
       setSelectedCompany(null)
-      setFormData((prev: any) => ({
+      setFormData((prev) => ({
         ...prev,
         comp_code: ''
       }))
@@ -67,7 +68,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
     setIsLoadingCompanies(true)
     try {
       console.log('Fetching companies from API...')
-      const response = await superadminApi.getCompanies() as { success: boolean; data: any }
+      const response = await superadminApi.getCompanies() as ApiResponse<any[]>
       console.log('Companies API response:', response)
       
       if (response.success && Array.isArray(response.data)) {
@@ -87,7 +88,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
   }
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<any> = {}
+    const newErrors: Record<string, string> = {}
 
     // Name validation
     if (!formData.name.trim()) {
@@ -181,7 +182,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
         is_active: formData.is_active
       }
       
-      const response = await superadminApi.createCompanyUser(createData)
+      const response = await superadminApi.createCompanyUser(createData) as ApiResponse<any>
       if (response.success) {
         onSuccess()
         handleClose()

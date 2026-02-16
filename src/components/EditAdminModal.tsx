@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { X } from 'lucide-react'
 import { adminApi, type Admin, type UpdateAdminRequest } from '../services/admin'
 import { superadminApi } from '../services/superadminApi'
+import type { ApiResponse } from '../types/api'
 
 interface EditAdminModalProps {
   isOpen: boolean
@@ -11,19 +12,19 @@ interface EditAdminModalProps {
 }
 
 const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSuccess, admin }) => {
-  const [formData, setFormData] = useState<any>({
+  const [formData, setFormData] = useState({
     name: admin.name,
     email: admin.email,
     phone: admin.phone,
     role: admin.role,
     is_active: admin.is_active,
-    comp_code: admin.comp_code || ''
+    comp_code: ''
   })
   const [companies, setCompanies] = useState<any[]>([])
   const [selectedCompany, setSelectedCompany] = useState<any>(null)
   const [newPassword, setNewPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [errors, setErrors] = useState<Partial<any & { newPassword: string }>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -32,8 +33,8 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }))
     // Clear error for this field when user starts typing
-    if (errors[name as keyof any]) {
-      setErrors((prev: any) => ({ ...prev, [name]: '' }))
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: '' }))
     }
   }
 
@@ -43,13 +44,13 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
     
     if (company) {
       setSelectedCompany(company)
-      setFormData((prev: any) => ({
+      setFormData((prev) => ({
         ...prev,
         comp_code: company.code
       }))
     } else {
       setSelectedCompany(null)
-      setFormData((prev: any) => ({
+      setFormData((prev) => ({
         ...prev,
         comp_code: ''
       }))
@@ -58,7 +59,7 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
 
   const fetchCompanies = async () => {
     try {
-      const response = await superadminApi.getCompanies() as { success: boolean; data: any }
+      const response = await superadminApi.getCompanies() as ApiResponse<any[]>
       if (response.success && Array.isArray(response.data)) {
         setCompanies(response.data)
       }
@@ -82,7 +83,7 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
   }
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<any> = {}
+    const newErrors: Record<string, string> = {}
 
     // Name validation
     if (!formData.name?.trim()) {
@@ -168,7 +169,7 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
         comp_code: formData.comp_code
       }
       
-      const response = await superadminApi.updateCompanyUser(admin.id, updateData)
+      const response = await superadminApi.updateCompanyUser(admin.id, updateData) as ApiResponse<any>
       if (response.success) {
         // If new password is provided, reset it
         if (newPassword) {
@@ -191,7 +192,8 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
         email: admin.email,
         phone: admin.phone,
         role: admin.role,
-        is_active: admin.is_active
+        is_active: admin.is_active,
+        comp_code: ''
       })
       setNewPassword('')
       setErrors({})

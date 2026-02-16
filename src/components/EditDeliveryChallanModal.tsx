@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { superadminApi } from '../services/superadminApi'
 import { customerApi, partApi } from '../services'
 import type { DeliveryChallan, UpdateDeliveryChallanRequest } from '../services/deliveryChallans'
+import type { ApiResponse } from '../types/api'
 
 interface EditDeliveryChallanModalProps {
   isOpen: boolean
@@ -97,15 +98,8 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
   const fetchParts = async () => {
     try {
       const response = await partApi.getAllParts()
-      if (response.success) {
-        let partsData: any[] = []
-        
-        if (Array.isArray(response.data)) {
-          partsData = response.data
-        } else if (response.data.data && Array.isArray(response.data.data)) {
-          partsData = response.data.data
-        }
-        
+      if (response.success && response.data) {
+        const partsData = Array.isArray(response.data) ? response.data : []
         setParts(partsData)
         console.log('Parts loaded for dropdown:', partsData.length, partsData)
       }
@@ -226,16 +220,16 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
       const challanId = parseInt(challan?.id || '0')
       console.log('Parsed challan ID:', challanId)
       
-      const response = await superadminApi.updateDeliveryChallan(challanId, submitData)
+      const response = await superadminApi.updateDeliveryChallan(challanId, submitData) as ApiResponse<any>
       console.log('Raw API Response:', response)
       console.log('Response type:', typeof response)
       console.log('Response success:', response?.success)
       console.log('Response data:', response?.data)
       console.log('Response message:', response?.message)
       
-      // Handle different response formats
-      const isSuccess = response?.success || response?.data?.success
-      const message = response?.message || response?.data?.message || 'Update completed'
+      // Handle different response formats safely
+      const isSuccess = Boolean(response?.success)
+      const message = response?.message || 'Update completed'
       
       console.log('Is success:', isSuccess)
       console.log('Final message:', message)

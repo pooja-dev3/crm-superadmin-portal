@@ -52,11 +52,6 @@ interface DashboardStats {
   totalParts: number
   totalOrders: number
   totalDeliveryChallans: number
-  totalRevenue: number
-  monthlyRevenue: number
-  revenueGrowth: number
-  avgOrderValue: number
-  conversionRate: number
   systemHealth: number
   activeUsers: number
   roleSummary: {
@@ -88,11 +83,6 @@ const Dashboard: React.FC = () => {
     totalParts: 0,
     totalOrders: 0,
     totalDeliveryChallans: 0,
-    totalRevenue: 0,
-    monthlyRevenue: 0,
-    revenueGrowth: 0,
-    avgOrderValue: 0,
-    conversionRate: 0,
     systemHealth: 0,
     activeUsers: 0,
     roleSummary: {
@@ -102,7 +92,6 @@ const Dashboard: React.FC = () => {
       operator: 0
     }
   })
-  const [revenueData, setRevenueData] = useState<RevenueData[]>([])
   const [companyGrowthData, setCompanyGrowthData] = useState<ChartData>({ labels: [], values: [] })
   const [isLoading, setIsLoading] = useState(true)
 
@@ -136,11 +125,6 @@ const Dashboard: React.FC = () => {
             totalParts: summary.total_parts || 0,
             totalOrders: summary.total_orders || 0,
             totalDeliveryChallans: summary.total_delivery_challans || 0,
-            totalRevenue: summary.total_orders * 5000, // Estimated revenue per order
-            monthlyRevenue: Math.floor((summary.total_orders || 0) * 500), // Estimated monthly
-            revenueGrowth: 12.5,
-            avgOrderValue: 5000,
-            conversionRate: 68.4,
             systemHealth: 98.7,
             activeUsers: summary.total_company_users || 0,
             roleSummary: {
@@ -161,11 +145,6 @@ const Dashboard: React.FC = () => {
             totalParts: 6,
             totalOrders: 9,
             totalDeliveryChallans: 3,
-            totalRevenue: 45000,
-            monthlyRevenue: 4500,
-            revenueGrowth: 12.5,
-            avgOrderValue: 5000,
-            conversionRate: 68.4,
             systemHealth: 98.7,
             activeUsers: 32,
             roleSummary: {
@@ -199,7 +178,6 @@ const Dashboard: React.FC = () => {
           colors: ['#1e40af', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa', '#3b82f6', '#1e40af', '#1e3a8a']
         }
 
-        setRevenueData(mockRevenueData)
         setCompanyGrowthData(mockCompanyGrowth)
       } catch (error) {
         console.error('Error fetching dashboard stats:', error)
@@ -212,15 +190,6 @@ const Dashboard: React.FC = () => {
   }, [])
 
   const statCards = [
-    {
-      title: 'Total Revenue',
-      value: `₹${stats.totalRevenue.toLocaleString()}`,
-      icon: DollarSign,
-      color: 'text-green-600',
-      bgColor: 'bg-gradient-to-r from-green-500 to-green-600',
-      trend: stats.revenueGrowth,
-      trendLabel: 'vs last month'
-    },
     {
       title: 'Total Companies',
       value: stats.totalCompanies,
@@ -264,6 +233,15 @@ const Dashboard: React.FC = () => {
       color: 'text-indigo-600',
       bgColor: 'bg-gradient-to-r from-indigo-500 to-indigo-600',
       trend: 12.8,
+      trendLabel: 'this month'
+    },
+    {
+      title: 'Delivery Challans',
+      value: stats.totalDeliveryChallans,
+      icon: FileText,
+      color: 'text-green-600',
+      bgColor: 'bg-gradient-to-r from-green-500 to-green-600',
+      trend: 8.5,
       trendLabel: 'this month'
     }
   ]
@@ -333,119 +311,42 @@ const Dashboard: React.FC = () => {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-in-up" style={{ animationDelay: '400ms' }}>
-        {/* Revenue Chart */}
-        <div className="bg-white shadow-lg rounded-xl p-6 border border-gray-100">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">Revenue Trend</h3>
-              <p className="text-sm text-gray-500">Monthly revenue over the last 12 months</p>
-            </div>
-            <div className="p-2 bg-green-100 rounded-lg">
-              <BarChart3 className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-          <div className="space-y-3 max-h-80 overflow-y-auto">
-            {revenueData.map((data, index) => {
-              const maxRevenue = Math.max(...revenueData.map(d => d.revenue))
-              const percentage = (data.revenue / maxRevenue) * 100
-
-              return (
-                <div key={data.month} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-10 text-xs font-medium text-gray-600">
-                      {data.month}
-                    </div>
-                    <div className="flex-1">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-1000 ease-out"
-                          style={{
-                            width: `${percentage}%`,
-                            animationDelay: `${index * 100}ms`
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right ml-3">
-                    <div className="text-sm font-semibold text-gray-900">
-                      ₹{data.revenue.toLocaleString()}
-                    </div>
-                    <div className={`text-xs flex items-center ${
-                      data.growth > 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {data.growth > 0 ? (
-                        <TrendingUp className="h-3 w-3 mr-1" />
-                      ) : (
-                        <TrendingDown className="h-3 w-3 mr-1" />
-                      )}
-                      {Math.abs(data.growth)}%
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
         {/* Company Growth Chart */}
-        <div className="bg-white shadow-lg rounded-xl p-6 border border-gray-100">
+        <div className="bg-white shadow-lg rounded-xl p-6 border border-gray-100 lg:col-span-2">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Company Growth</h3>
-              <p className="text-sm text-gray-500">New customer registrations over the year</p>
+              <h3 className="text-lg font-semibold text-gray-900">System Overview</h3>
+              <p className="text-sm text-gray-500">Key performance metrics</p>
               <div className="flex items-center mt-1">
                 <span className="text-2xl font-bold text-blue-600">
-                  {stats.totalCustomers}
+                  {stats.totalCompanies}
                 </span>
-                <span className="text-sm text-gray-500 ml-2">total customers</span>
+                <span className="text-sm text-gray-500 ml-2">companies</span>
               </div>
             </div>
             <div className="p-2 bg-blue-100 rounded-lg">
               <BarChart3 className="h-6 w-6 text-blue-600" />
             </div>
           </div>
-          <div className="relative h-80 overflow-x-auto overflow-y-hidden scrollbar-hide">
-            <div className="absolute inset-0 flex items-end justify-between min-w-max px-4 py-2">
-              {companyGrowthData.values.map((value, index) => {
-                const maxValue = Math.max(...companyGrowthData.values)
-                const minValue = Math.min(...companyGrowthData.values)
-                const range = Math.max(maxValue - minValue, 1)
-                const normalized = (value - minValue) / range
-                const heightPercentage = 25 + normalized * 65 // 25% min, 90% max
-                const actualHeight = (heightPercentage / 100) * 280 // Convert to pixels based on container height
-
-                return (
-                  <div key={index} className="flex flex-col items-center flex-shrink-0 mx-3">
-                    <div className="relative mb-3" style={{ height: '280px' }}>
-                      <div
-                        className="w-8 bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-lg transition-all duration-700 ease-out hover:from-blue-700 hover:to-blue-500 hover:scale-110 shadow-md hover:shadow-lg cursor-pointer absolute bottom-0"
-                        style={{
-                          height: `${actualHeight}px`,
-                          animationDelay: `${index * 50}ms`
-                        }}
-                        title={`${companyGrowthData.labels[index]}: ${value} companies`}
-                      ></div>
-                      {/* Value label on top of bar */}
-                      <div 
-                        className="absolute text-xs font-bold text-gray-800 opacity-0 hover:opacity-100 transition-opacity duration-200 bg-white px-1 rounded shadow-sm"
-                        style={{ bottom: `${actualHeight + 8}px` }}
-                      >
-                        {value}
-                      </div>
-                    </div>
-                    <div className="text-xs text-gray-600 font-semibold text-center leading-tight mb-1">
-                      {companyGrowthData.labels[index]}
-                    </div>
-                    <div className="text-xs text-gray-900 font-bold text-center leading-tight">
-                      {value}
-                    </div>
-                  </div>
-                )
-              })}
+          
+          {/* Metrics Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">{stats.totalOrders}</div>
+              <div className="text-sm text-gray-500">Total Orders</div>
             </div>
-            {/* Add a subtle baseline */}
-            <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-300"></div>
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">{stats.totalDeliveryChallans}</div>
+              <div className="text-sm text-gray-500">Delivery Challans</div>
+            </div>
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-purple-600">{stats.totalParts}</div>
+              <div className="text-sm text-gray-500">Total Parts</div>
+            </div>
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-orange-600">{stats.totalCustomers}</div>
+              <div className="text-sm text-gray-500">Total Customers</div>
+            </div>
           </div>
         </div>
       </div>

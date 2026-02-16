@@ -1,65 +1,240 @@
 import React, { useState, useEffect } from 'react'
-import { BarChart3, TrendingUp, Users, ShoppingCart, FileText, Calendar } from 'lucide-react'
+import { BarChart3, TrendingUp, Users, ShoppingCart, FileText, Calendar, Download, Filter } from 'lucide-react'
+import { superadminApi } from '../services/superadminApi'
+import { customerApi } from '../services'
+import { ordersApi } from '../services/orders'
+import { adminApi } from '../services/admin'
+import type { ApiResponse } from '../types/api'
 
 interface ReportData {
   totalRevenue: number
   totalOrders: number
   totalCompanies: number
   totalChallans: number
+  totalCustomers: number
+  totalAdmins: number
+  totalParts: number
   monthlyRevenue: { month: string; amount: number }[]
   companyPerformance: { company: string; orders: number; revenue: number }[]
+  recentOrders: {
+    id: number
+    po_no: string
+    customer: string
+    amount: number
+    status: string
+    created_at: string
+  }[]
+  statusBreakdown: {
+    pending: number
+    processing: number
+    completed: number
+    cancelled: number
+  }
 }
 
 const Reports: React.FC = () => {
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [timeRange, setTimeRange] = useState('30d')
+  const [error, setError] = useState<string | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
 
   useEffect(() => {
-    // Mock API call - replace with actual API
-    const fetchReportData = async () => {
-      try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000))
-
-        // Mock data
-        const mockData: ReportData = {
-          totalRevenue: 285000,
-          totalOrders: 1250,
-          totalCompanies: 45,
-          totalChallans: 320,
-          monthlyRevenue: [
-            { month: 'Jan', amount: 45000 },
-            { month: 'Feb', amount: 52000 },
-            { month: 'Mar', amount: 48000 },
-            { month: 'Apr', amount: 61000 },
-            { month: 'May', amount: 55000 },
-            { month: 'Jun', amount: 69000 }
-          ],
-          companyPerformance: [
-            { company: 'TechCorp Solutions', orders: 45, revenue: 65000 },
-            { company: 'GlobalTech Inc.', orders: 38, revenue: 52000 },
-            { company: 'DataFlow Systems', orders: 32, revenue: 48000 },
-            { company: 'InnovateLabs', orders: 28, revenue: 42000 },
-            { company: 'CloudSync Ltd.', orders: 25, revenue: 38000 }
-          ]
-        }
-
-        setReportData(mockData)
-      } catch (error) {
-        console.error('Error fetching report data:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
     fetchReportData()
   }, [timeRange])
+
+  const fetchReportData = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      
+      // Fetch all data in parallel
+      const [
+        companiesResponse,
+        ordersResponse,
+        challansResponse,
+        customersResponse,
+        adminsResponse,
+        partsResponse
+      ] = await Promise.all([
+        superadminApi.getCompanies() as unknown as ApiResponse<any[]>,
+        ordersApi.getAllOrders() as unknown as ApiResponse<any[]>,
+        superadminApi.getDeliveryChallans() as unknown as { success: boolean; data: any },
+        customerApi.getAllCustomers() as unknown as ApiResponse<any[]>,
+        adminApi.getAllAdmins() as unknown as ApiResponse<any[]>,
+        superadminApi.getParts() as unknown as ApiResponse<any[]>
+      ])
+
+      // Process data from responses
+      const companies = (companiesResponse as any)?.success ? 
+        (Array.isArray((companiesResponse as any).data) ? (companiesResponse as any).data : (companiesResponse as any).data?.data || []) : []
+      
+      const orders = (ordersResponse as any)?.success ? 
+        (Array.isArray((ordersResponse as any).data) ? (ordersResponse as any).data : (ordersResponse as any).data?.data || []) : []
+      
+      const challans = (challansResponse as any)?.success ? 
+        (Array.isArray((challansResponse as any).data) ? (challansResponse as any).data : (challansResponse as any).data?.data || []) : []
+      
+      const customers = (customersResponse as any)?.success ? 
+        (Array.isArray((customersResponse as any).data) ? (customersResponse as any).data : (customersResponse as any).data?.data || []) : []
+      
+      const admins = (adminsResponse as any)?.success ? 
+        (Array.isArray((adminsResponse as any).data) ? (adminsResponse as any).data : (adminsResponse as any).data?.data || []) : []
+      
+      const parts = (partsResponse as any)?.success ? 
+        (Array.isArray((partsResponse as any).data) ? (partsResponse as any).data : (partsResponse as any).data?.data || []) : []
+
+      // Calculate metrics
+      const totalRevenue = orders.reduce((sum: number, order: any) => sum + parseFloat(order.price || '0'), 0)
+      const totalOrders = orders.length
+      const totalCompanies = companies.length
+      const totalChallans = challans.length
+      const totalCustomers = customers.length
+      const totalAdmins = admins.length
+      const totalParts = parts.length
+
+      // Generate monthly revenue data
+      const monthlyRevenue = generateMonthlyRevenue(orders)
+      
+      // Generate company performance data
+      const companyPerformance = generateCompanyPerformance(orders, companies)
+      
+      // Get recent orders
+      const recentOrders = orders
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 5)
+        .map((order: any) => ({
+          id: order.id,
+          po_no: order.po_no,
+          customer: order.customer?.name || order.comp_name || 'Unknown',
+          amount: parseFloat(order.price || '0'),
+          status: order.po_received ? 'Received' : 'Pending',
+          created_at: order.created_at
+        }))
+
+      // Status breakdown
+      const statusBreakdown = {
+        pending: orders.filter((order: any) => !order.po_received).length,
+        processing: orders.filter((order: any) => order.po_received && order.balance_qty > 0).length,
+        completed: orders.filter((order: any) => order.balance_qty === 0).length,
+        cancelled: 0 // Add if you have cancelled status
+      }
+
+      const processedData: ReportData = {
+        totalRevenue,
+        totalOrders,
+        totalCompanies,
+        totalChallans,
+        totalCustomers,
+        totalAdmins,
+        totalParts,
+        monthlyRevenue,
+        companyPerformance,
+        recentOrders,
+        statusBreakdown
+      }
+
+      setReportData(processedData)
+    } catch (error) {
+      console.error('Error fetching report data:', error)
+      setError('Failed to load report data. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const generateMonthlyRevenue = (orders: any[]) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const currentMonth = new Date().getMonth()
+    const monthlyData = months.map((month, index) => {
+      const monthOrders = orders.filter((order: any) => {
+        const orderMonth = new Date(order.created_at).getMonth()
+        return orderMonth === index
+      })
+      const revenue = monthOrders.reduce((sum: number, order: any) => sum + parseFloat(order.price || '0'), 0)
+      return { month, amount: revenue }
+    })
+    
+    // Return last 6 months
+    return monthlyData.slice(-6)
+  }
+
+  const generateCompanyPerformance = (orders: any[], companies: any[]) => {
+    const performanceMap = new Map<string, { orders: number; revenue: number }>()
+    
+    orders.forEach((order: any) => {
+      const company = order.comp_name || order.customer?.name || 'Unknown'
+      const current = performanceMap.get(company) || { orders: 0, revenue: 0 }
+      current.orders++
+      current.revenue += parseFloat(order.price || '0')
+      performanceMap.set(company, current)
+    })
+    
+    return Array.from(performanceMap.entries())
+      .map(([company, data]) => ({ company, ...data }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5)
+  }
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true)
+      // Create CSV content
+      const csvContent = generateCSV()
+      
+      // Download file
+      const blob = new Blob([csvContent], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `reports-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error exporting data:', error)
+      alert('Failed to export data')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const generateCSV = () => {
+    if (!reportData) return ''
+    
+    const headers = ['Metric', 'Value']
+    const rows = [
+      ['Total Revenue', reportData.totalRevenue.toString()],
+      ['Total Orders', reportData.totalOrders.toString()],
+      ['Total Companies', reportData.totalCompanies.toString()],
+      ['Total Customers', reportData.totalCustomers.toString()],
+      ['Total Admins', reportData.totalAdmins.toString()],
+      ['Total Parts', reportData.totalParts.toString()],
+      ['Total Delivery Challans', reportData.totalChallans.toString()]
+    ]
+    
+    return [headers, ...rows].map(row => row.join(',')).join('\n')
+  }
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-500 mb-4">{error}</p>
+        <button
+          onClick={fetchReportData}
+          className="px-4 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800 transition-colors"
+        >
+          Retry
+        </button>
       </div>
     )
   }
@@ -83,23 +258,33 @@ const Reports: React.FC = () => {
             System analytics and performance metrics
           </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Calendar className="h-5 w-5 text-gray-400" />
-          <select
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value)}
-            className="block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={handleExport}
+            disabled={isExporting}
+            className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <option value="7d">Last 7 days</option>
-            <option value="30d">Last 30 days</option>
-            <option value="90d">Last 90 days</option>
-            <option value="1y">Last year</option>
-          </select>
+            <Download className="h-4 w-4" />
+            <span>{isExporting ? 'Exporting...' : 'Export'}</span>
+          </button>
+          <div className="flex items-center space-x-2">
+            <Calendar className="h-5 w-5 text-gray-400" />
+            <select
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+              className="block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+            >
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+              <option value="90d">Last 90 days</option>
+              <option value="1y">Last year</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-5">
             <div className="flex items-center">
@@ -155,7 +340,7 @@ const Reports: React.FC = () => {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">
-                    Total Companies
+                    Companies
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
                     {reportData.totalCompanies}
@@ -177,10 +362,54 @@ const Reports: React.FC = () => {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">
-                    Delivery Challans
+                    Challans
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
                     {reportData.totalChallans}
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="p-3 bg-teal-100 rounded-md">
+                  <Users className="h-6 w-6 text-teal-600" />
+                </div>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">
+                    Customers
+                  </dt>
+                  <dd className="text-lg font-medium text-gray-900">
+                    {reportData.totalCustomers}
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="p-3 bg-indigo-100 rounded-md">
+                  <BarChart3 className="h-6 w-6 text-indigo-600" />
+                </div>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">
+                    Parts
+                  </dt>
+                  <dd className="text-lg font-medium text-gray-900">
+                    {reportData.totalParts}
                   </dd>
                 </dl>
               </div>
@@ -242,6 +471,92 @@ const Reports: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Orders Table */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Orders</h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  PO Number
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Customer
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {reportData.recentOrders.map((order) => (
+                <tr key={order.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {order.po_no}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {order.customer}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    ₹{order.amount.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      order.status === 'Received' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(order.created_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Status Breakdown */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Order Status Breakdown</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-yellow-600">
+              {reportData.statusBreakdown.pending}
+            </div>
+            <div className="text-sm text-gray-500">Pending</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600">
+              {reportData.statusBreakdown.processing}
+            </div>
+            <div className="text-sm text-gray-500">Processing</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">
+              {reportData.statusBreakdown.completed}
+            </div>
+            <div className="text-sm text-gray-500">Completed</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-red-600">
+              {reportData.statusBreakdown.cancelled}
+            </div>
+            <div className="text-sm text-gray-500">Cancelled</div>
           </div>
         </div>
       </div>

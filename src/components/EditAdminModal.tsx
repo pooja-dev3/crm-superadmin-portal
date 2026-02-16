@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { X } from 'lucide-react'
 import { adminApi, type Admin, type UpdateAdminRequest } from '../services/admin'
+import { superadminApi } from '../services/superadminApi'
 
 interface EditAdminModalProps {
   isOpen: boolean
@@ -10,29 +11,68 @@ interface EditAdminModalProps {
 }
 
 const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSuccess, admin }) => {
-  const [formData, setFormData] = useState<UpdateAdminRequest>({
+  const [formData, setFormData] = useState<any>({
     name: admin.name,
     email: admin.email,
     phone: admin.phone,
-    department: admin.department,
     role: admin.role,
-    is_active: admin.is_active
+    is_active: admin.is_active,
+    comp_code: admin.comp_code || ''
   })
+  const [companies, setCompanies] = useState<any[]>([])
+  const [selectedCompany, setSelectedCompany] = useState<any>(null)
   const [newPassword, setNewPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [errors, setErrors] = useState<Partial<UpdateAdminRequest & { newPassword: string }>>({})
+  const [errors, setErrors] = useState<Partial<any & { newPassword: string }>>({})
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }))
     // Clear error for this field when user starts typing
-    if (errors[name as keyof UpdateAdminRequest]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
+    if (errors[name as keyof any]) {
+      setErrors((prev: any) => ({ ...prev, [name]: '' }))
     }
   }
+
+  const handleCompanyChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const companyId = e.target.value
+    const company = companies.find(c => c.id.toString() === companyId)
+    
+    if (company) {
+      setSelectedCompany(company)
+      setFormData((prev: any) => ({
+        ...prev,
+        comp_code: company.code
+      }))
+    } else {
+      setSelectedCompany(null)
+      setFormData((prev: any) => ({
+        ...prev,
+        comp_code: ''
+      }))
+    }
+  }
+
+  const fetchCompanies = async () => {
+    try {
+      const response = await superadminApi.getCompanies() as { success: boolean; data: any }
+      if (response.success && Array.isArray(response.data)) {
+        setCompanies(response.data)
+      }
+    } catch (error) {
+      console.error('Error fetching companies:', error)
+    }
+  }
+
+  // Fetch companies when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      fetchCompanies()
+    }
+  }, [isOpen])
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewPassword(e.target.value)
@@ -42,27 +82,66 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
   }
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<UpdateAdminRequest & { newPassword: string }> = {}
+    const newErrors: Partial<any> = {}
 
+    // Name validation
     if (!formData.name?.trim()) {
       newErrors.name = 'Name is required'
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Name must be at least 2 characters'
+    } else if (formData.name.trim().length > 100) {
+      newErrors.name = 'Name must be less than 100 characters'
+    } else if (!/^[a-zA-Z\s]+$/.test(formData.name.trim())) {
+      newErrors.name = 'Name can only contain letters and spaces'
     }
+
+    // Email validation
     if (!formData.email?.trim()) {
       newErrors.email = 'Email is required'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format'
+    } else if (formData.email.trim().length > 255) {
+      newErrors.email = 'Email must be less than 255 characters'
     }
+
+    // Phone validation
     if (!formData.phone?.trim()) {
       newErrors.phone = 'Phone is required'
+    } else if (!/^[+]?[\d\s\-\(\)]{10,}$/.test(formData.phone.replace(/\s/g, ''))) {
+      newErrors.phone = 'Invalid phone number format'
+    } else if (formData.phone.replace(/\D/g, '').length < 10) {
+      newErrors.phone = 'Phone number must be at least 10 digits'
+    } else if (formData.phone.replace(/\D/g, '').length > 15) {
+      newErrors.phone = 'Phone number must be less than 15 digits'
     }
-    if (!formData.department?.trim()) {
-      newErrors.department = 'Department is required'
-    }
+
+    // Role validation
     if (!formData.role) {
       newErrors.role = 'Role is required'
+    } else if (!['admin', 'supervisor', 'operator'].includes(formData.role)) {
+      newErrors.role = 'Invalid role selected'
     }
-    if (newPassword && newPassword.length < 6) {
-      newErrors.newPassword = 'Password must be at least 6 characters'
+
+    // New password validation (optional)
+    if (newPassword) {
+      if (newPassword.length < 8) {
+        newErrors.newPassword = 'Password must be at least 8 characters'
+      } else if (newPassword.length > 128) {
+        newErrors.newPassword = 'Password must be less than 128 characters'
+      } else if (!/(?=.*[a-z])/.test(newPassword)) {
+        newErrors.newPassword = 'Password must contain at least one lowercase letter'
+      } else if (!/(?=.*[A-Z])/.test(newPassword)) {
+        newErrors.newPassword = 'Password must contain at least one uppercase letter'
+      } else if (!/(?=.*\d)/.test(newPassword)) {
+        newErrors.newPassword = 'Password must contain at least one number'
+      } else if (!/(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(newPassword)) {
+        newErrors.newPassword = 'Password must contain at least one special character'
+      }
+    }
+
+    // Company validation (optional but if selected, must be valid)
+    if (selectedCompany && !selectedCompany.comp_name) {
+      newErrors.comp_code = 'Invalid company selected'
     }
 
     setErrors(newErrors)
@@ -78,12 +157,22 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
 
     setIsLoading(true)
     try {
-      // Update admin details
-      const response = await adminApi.updateAdmin(admin.id, formData)
+      // Update admin details with company
+      const updateData = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        role: formData.role,
+        is_active: formData.is_active,
+        comp_name: selectedCompany?.comp_name || '', // Send company name instead of code
+        comp_code: formData.comp_code
+      }
+      
+      const response = await superadminApi.updateCompanyUser(admin.id, updateData)
       if (response.success) {
         // If new password is provided, reset it
         if (newPassword) {
-          await adminApi.resetPassword(admin.id, newPassword)
+          await superadminApi.updateCompanyUser(admin.id, { password: newPassword })
         }
         onSuccess()
       }
@@ -101,7 +190,6 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
         name: admin.name,
         email: admin.email,
         phone: admin.phone,
-        department: admin.department,
         role: admin.role,
         is_active: admin.is_active
       })
@@ -191,22 +279,33 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Department *
+                  Company
                 </label>
-                <input
-                  type="text"
-                  name="department"
-                  value={formData.department}
-                  onChange={handleChange}
+                <select
+                  value={selectedCompany?.id || ''}
+                  onChange={handleCompanyChange}
                   className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                    errors.department ? 'border-red-500' : 'border-gray-300'
+                    errors.comp_code ? 'border-red-500' : 'border-gray-300'
                   }`}
                   disabled={isLoading}
-                />
-                {errors.department && (
-                  <p className="mt-1 text-sm text-red-600">{errors.department}</p>
+                >
+                  <option value="">Select Company</option>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.comp_name}
+                    </option>
+                  ))}
+                </select>
+                {selectedCompany && (
+                  <p className="mt-1 text-sm text-gray-500">
+                    Company Code: <span className="font-medium">{selectedCompany.code}</span>
+                  </p>
+                )}
+                {errors.comp_code && (
+                  <p className="mt-1 text-sm text-red-600">{errors.comp_code}</p>
                 )}
               </div>
+
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">

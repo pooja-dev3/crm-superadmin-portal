@@ -2,6 +2,7 @@
 import { API_CONFIG } from '../config/api'
 
 const API_BASE_URL = API_CONFIG.BASE_URL
+const MOCK_MODE = false // Disabled - using real API
 
 class ApiClient {
   private baseURL: string
@@ -23,6 +24,11 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    // Mock mode for development without backend
+    if (MOCK_MODE) {
+      return this.mockResponse<T>(endpoint, options)
+    }
+
     const url = `${this.baseURL}${endpoint}`
     
     const headers = {
@@ -38,12 +44,64 @@ class ApiClient {
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
+        // Try to get response text to see what Laravel is actually returning
+        const responseText = await response.text()
+        console.error('Raw Response Text:', responseText)
+        
+        let errorData: any = {}
+        try {
+          errorData = JSON.parse(responseText)
+        } catch (e) {
+          console.error('Failed to parse error response as JSON:', e)
+          errorData = { rawResponse: responseText }
+        }
+        
+        console.error('API Error Response:', errorData)
+        console.error('Status:', response.status)
+        console.error('Status Text:', response.statusText)
+        
+        // Handle HTML error pages
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('text/html')) {
+          console.error('Full HTML Response:', responseText)
+          console.error('Response Headers:', Object.fromEntries(response.headers.entries()))
+          console.error('Request URL:', url)
+          console.error('Request Method:', options.method || 'GET')
+          console.error('Request Body:', options.body)
+          
+          // Try to extract Laravel error message from HTML
+          let laravelError = 'Unknown error'
+          if (responseText.includes('419 Page Expired')) {
+            laravelError = 'CSRF token mismatch or session expired'
+          } else if (responseText.includes('403 Forbidden')) {
+            laravelError = 'Access forbidden - insufficient permissions'
+          } else if (responseText.includes('500 Server Error')) {
+            laravelError = 'Internal server error - check Laravel logs'
+          } else if (responseText.includes('404 Not Found')) {
+            laravelError = 'Route not found - check Laravel routes'
+          }
+          
+          throw new Error(`Laravel Error: ${laravelError}. Status: ${response.status}. Full HTML: ${responseText.substring(0, 500)}...`)
+        }
+        
+        // Handle 401 Unauthorized - remove invalid token
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token')
+        }
         
         // Create a more detailed error message
         let errorMessage = `HTTP error! status: ${response.status}`
         
-        if (response.status === 422) {
+        if (response.status === 500) {
+          // Internal Server Error - show more details
+          if (errorData.message) {
+            errorMessage = `Server error: ${errorData.message}`
+          } else if (errorData.error) {
+            errorMessage = `Server error: ${errorData.error}`
+          } else {
+            errorMessage = 'Internal server error. Please check server logs.'
+          }
+        } else if (response.status === 422) {
           // Laravel validation errors
           if (errorData.errors) {
             const validationErrors = Object.entries(errorData.errors)
@@ -63,11 +121,814 @@ class ApiClient {
         throw new Error(errorMessage)
       }
 
-      return await response.json()
+      const responseData = await response.json()
+      console.log('API Success Response:', responseData)
+      return responseData
     } catch (error) {
       console.error('API request failed:', error)
+      
+      // Provide more specific error messages
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        if (endpoint.includes('192.168.1.22')) {
+          throw new Error('Unable to connect to API server. Please ensure the backend server is running on http://192.168.1.22:8000')
+        } else {
+          throw new Error('Network error: Unable to reach the API server')
+        }
+      }
+      
       throw error
     }
+  }
+
+  private mockResponse<T>(endpoint: string, options: RequestInit): Promise<T> {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        if (endpoint === '/auth/login' && options.method === 'POST') {
+          const mockLoginResponse = {
+            success: true,
+            message: 'Login successful',
+            token: 'mock-jwt-token-12345',
+            user: {
+              id: 1,
+              name: 'Super Admin',
+              email: 'superadmin@example.com',
+              role: 'superadmin'
+            }
+          }
+          resolve(mockLoginResponse as T)
+        } else if (endpoint === '/auth/me') {
+          const mockUserResponse = {
+            success: true,
+            data: {
+              id: 1,
+              name: 'Super Admin',
+              email: 'superadmin@example.com',
+              role: 'admin'
+            }
+          }
+          resolve(mockUserResponse as T)
+        } else if (endpoint === '/auth/logout') {
+          const mockLogoutResponse = {
+            success: true,
+            message: 'Logout successful'
+          }
+          resolve(mockLogoutResponse as T)
+        } else if (endpoint === '/orders') {
+          // Mock orders response with proper pagination structure
+          const mockOrdersResponse = {
+            success: true,
+            message: 'Orders retrieved successfully',
+            data: {
+              data: [
+                {
+                  id: 1,
+                  customer_id: 1,
+                  part_id: 1,
+                  po_no: 'PO-2024-001',
+                  po_date: '2024-01-15',
+                  po_received: true,
+                  po_qty: 100,
+                  po_drg_rev: 'A',
+                  acknowledgement_remarks: 'Order confirmed',
+                  reqd_date_as_per_po: '2024-02-15',
+                  dispatch_details_inv_date: '2024-02-10',
+                  dispatch_details_inv_no: 'INV-2024-001',
+                  dispatch_details_inv_qlt: 100,
+                  balance_qty: 25,
+                  balance_as_per_hitachi: 25,
+                  price: '150.00',
+                  fg_stock: 75,
+                  wip_stock: 0,
+                  is_active: true,
+                  created_at: '2024-01-15T10:00:00Z',
+                  updated_at: '2024-02-10T15:30:00Z',
+                  customer: {
+                    id: 1,
+                    name: 'ABC Manufacturing Ltd',
+                    email: 'contact@abc.com',
+                    address: '123 Industrial Area, Mumbai',
+                    contact_no: '9876543210',
+                    gst_no: '27AAAPL1234C1ZV',
+                    is_active: true,
+                    created_at: '2024-01-01T00:00:00Z',
+                    updated_at: '2024-01-01T00:00:00Z'
+                  },
+                  part: {
+                    id: 1,
+                    customer_id: 1,
+                    part_description: 'Precision Gear Assembly',
+                    drawing_no: 'DRG-001',
+                    rev_no: 'A',
+                    net_wt: '2.5',
+                    thickness: '10',
+                    tool_information: 'CNC Tool Set A',
+                    raw_material: 'Steel Grade 45',
+                    drawing_location: 'Folder A',
+                    operation_sequence: 'Cutting -> Machining -> Assembly',
+                    lead_time: 15,
+                    is_active: true,
+                    created_at: '2024-01-01T00:00:00Z',
+                    updated_at: '2024-01-01T00:00:00Z'
+                  }
+                },
+                {
+                  id: 2,
+                  customer_id: 2,
+                  part_id: 2,
+                  po_no: 'PO-2024-002',
+                  po_date: '2024-01-20',
+                  po_received: false,
+                  po_qty: 50,
+                  po_drg_rev: 'B',
+                  acknowledgement_remarks: 'Pending approval',
+                  reqd_date_as_per_po: '2024-03-01',
+                  dispatch_details_inv_date: '',
+                  dispatch_details_inv_no: '',
+                  dispatch_details_inv_qlt: 0,
+                  balance_qty: 50,
+                  balance_as_per_hitachi: 50,
+                  price: '200.00',
+                  fg_stock: 0,
+                  wip_stock: 10,
+                  is_active: true,
+                  created_at: '2024-01-20T09:00:00Z',
+                  updated_at: '2024-01-20T09:00:00Z',
+                  customer: {
+                    id: 2,
+                    name: 'XYZ Components Pvt Ltd',
+                    email: 'info@xyz.com',
+                    address: '456 Industrial Estate, Pune',
+                    contact_no: '9876543211',
+                    gst_no: '27AAAPL5678D2ZV',
+                    is_active: true,
+                    created_at: '2024-01-05T00:00:00Z',
+                    updated_at: '2024-01-05T00:00:00Z'
+                  },
+                  part: {
+                    id: 2,
+                    customer_id: 2,
+                    part_description: 'Hydraulic Cylinder',
+                    drawing_no: 'DRG-002',
+                    rev_no: 'B',
+                    net_wt: '5.0',
+                    thickness: '15',
+                    tool_information: 'Hydraulic Press Tool',
+                    raw_material: 'Aluminum Alloy',
+                    drawing_location: 'Folder B',
+                    operation_sequence: 'Cutting -> Drilling -> Press -> Assembly',
+                    lead_time: 20,
+                    is_active: true,
+                    created_at: '2024-01-05T00:00:00Z',
+                    updated_at: '2024-01-05T00:00:00Z'
+                  }
+                }
+              ],
+              current_page: 1,
+              first_page_url: 'http://192.168.1.22:8000/api/orders?page=1',
+              from: 1,
+              last_page: 1,
+              last_page_url: 'http://192.168.1.22:8000/api/orders?page=1',
+              links: [
+                {
+                  url: null,
+                  label: '&laquo; Previous',
+                  page: null,
+                  active: false
+                },
+                {
+                  url: 'http://192.168.1.22:8000/api/orders?page=1',
+                  label: '1',
+                  page: 1,
+                  active: true
+                },
+                {
+                  url: null,
+                  label: 'Next &raquo;',
+                  page: null,
+                  active: false
+                }
+              ],
+              next_page_url: null,
+              path: 'http://192.168.1.22:8000/api/orders',
+              per_page: 15,
+              prev_page_url: null,
+              to: 2,
+              total: 2
+            }
+          }
+          resolve(mockOrdersResponse as T)
+        } else if (endpoint === '/parts') {
+          // Mock parts response
+          const mockPartsResponse = {
+            success: true,
+            data: [
+              {
+                id: 1,
+                customer_id: 1,
+                part_description: 'Precision Gear Assembly',
+                drawing_no: 'DRG-001',
+                rev_no: 'A',
+                net_wt: '2.5',
+                thickness: '10',
+                tool_information: 'CNC Tool Set A',
+                raw_material: 'Steel Grade 45',
+                drawing_location: 'Folder A',
+                operation_sequence: 'Cutting -> Machining -> Assembly',
+                lead_time: 15,
+                po_no: 'PO-2024-001',
+                po_date: '2024-01-15',
+                po_received: true,
+                po_qty: 100,
+                po_drg_rev: 'A',
+                acknowledgement_remarks: 'Order confirmed',
+                reqd_date_as_per_po: '2024-02-15',
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-01-01T00:00:00Z',
+                customer: {
+                  id: 1,
+                  name: 'ABC Manufacturing Ltd',
+                  email: 'contact@abc.com',
+                  address: '123 Industrial Area, Mumbai',
+                  contact_no: '9876543210',
+                  gst_no: '27AAAPL1234C1ZV',
+                  created_at: '2024-01-01T00:00:00Z',
+                  updated_at: '2024-01-01T00:00:00Z'
+                }
+              },
+              {
+                id: 2,
+                customer_id: 2,
+                part_description: 'Hydraulic Cylinder',
+                drawing_no: 'DRG-002',
+                rev_no: 'B',
+                net_wt: '5.0',
+                thickness: '15',
+                tool_information: 'Hydraulic Press Tool',
+                raw_material: 'Aluminum Alloy',
+                drawing_location: 'Folder B',
+                operation_sequence: 'Cutting -> Drilling -> Press -> Assembly',
+                lead_time: 20,
+                po_no: 'PO-2024-002',
+                po_date: '2024-01-20',
+                po_received: false,
+                po_qty: 50,
+                po_drg_rev: 'B',
+                acknowledgement_remarks: 'Pending approval',
+                reqd_date_as_per_po: '2024-03-01',
+                created_at: '2024-01-05T00:00:00Z',
+                updated_at: '2024-01-05T00:00:00Z',
+                customer: {
+                  id: 2,
+                  name: 'XYZ Components Pvt Ltd',
+                  email: 'info@xyz.com',
+                  address: '456 Industrial Estate, Pune',
+                  contact_no: '9876543211',
+                  gst_no: '27AAAPL5678D2ZV',
+                  created_at: '2024-01-05T00:00:00Z',
+                  updated_at: '2024-01-05T00:00:00Z'
+                }
+              },
+              {
+                id: 3,
+                customer_id: 1,
+                part_description: 'Electronic Control Unit',
+                drawing_no: 'DRG-003',
+                rev_no: 'C',
+                net_wt: '1.2',
+                thickness: '5',
+                tool_information: 'PCB Assembly Tools',
+                raw_material: 'FR4 PCB',
+                drawing_location: 'Folder C',
+                operation_sequence: 'Etching -> Drilling -> Component Placement -> Soldering',
+                lead_time: 10,
+                po_no: 'PO-2024-003',
+                po_date: '2024-01-25',
+                po_received: true,
+                po_qty: 200,
+                po_drg_rev: 'C',
+                acknowledgement_remarks: 'Approved for production',
+                reqd_date_as_per_po: '2024-02-20',
+                created_at: '2024-01-10T00:00:00Z',
+                updated_at: '2024-01-10T00:00:00Z',
+                customer: {
+                  id: 1,
+                  name: 'ABC Manufacturing Ltd',
+                  email: 'contact@abc.com',
+                  address: '123 Industrial Area, Mumbai',
+                  contact_no: '9876543210',
+                  gst_no: '27AAAPL1234C1ZV',
+                  created_at: '2024-01-01T00:00:00Z',
+                  updated_at: '2024-01-01T00:00:00Z'
+                }
+              }
+            ]
+          }
+          resolve(mockPartsResponse as T)
+        } else if (endpoint === '/customers') {
+          // Mock customers response with proper pagination structure
+          const mockCustomersResponse = {
+            success: true,
+            message: 'Customers retrieved successfully',
+            data: {
+              current_page: 1,
+              data: [
+                {
+                  id: 1,
+                  name: 'ABC Manufacturing Ltd',
+                  email: 'contact@abc.com',
+                  address: '123 Industrial Area, Mumbai',
+                  contact_no: '9876543210',
+                  gst_no: '27AAAPL1234C1ZV',
+                  is_active: true,
+                  created_at: '2024-01-01T00:00:00Z',
+                  updated_at: '2024-01-01T00:00:00Z'
+                },
+                {
+                  id: 2,
+                  name: 'XYZ Components Pvt Ltd',
+                  email: 'info@xyz.com',
+                  address: '456 Industrial Estate, Pune',
+                  contact_no: '9876543211',
+                  gst_no: '27AAAPL5678D2ZV',
+                  is_active: true,
+                  created_at: '2024-01-05T00:00:00Z',
+                  updated_at: '2024-01-05T00:00:00Z'
+                },
+                {
+                  id: 3,
+                  name: 'Tech Solutions India',
+                  email: 'admin@techsolutions.in',
+                  address: '789 Tech Park, Bangalore',
+                  contact_no: '9876543212',
+                  gst_no: '27AAAPL9012E3ZV',
+                  is_active: false,
+                  created_at: '2024-01-08T00:00:00Z',
+                  updated_at: '2024-01-08T00:00:00Z'
+                },
+                {
+                  id: 4,
+                  name: 'Global Engineering Corp',
+                  email: 'info@globaleng.com',
+                  address: '321 Industrial Hub, Chennai',
+                  contact_no: '9876543213',
+                  gst_no: '27AAAPL3456F4ZV',
+                  is_active: true,
+                  created_at: '2024-01-12T00:00:00Z',
+                  updated_at: '2024-01-12T00:00:00Z'
+                }
+              ],
+              first_page_url: 'http://192.168.1.22:8000/api/customers?page=1',
+              from: 1,
+              last_page: 1,
+              last_page_url: 'http://192.168.1.22:8000/api/customers?page=1',
+              links: [
+                {
+                  url: null,
+                  label: '&laquo; Previous',
+                  page: null,
+                  active: false
+                },
+                {
+                  url: 'http://192.168.1.22:8000/api/customers?page=1',
+                  label: '1',
+                  page: 1,
+                  active: true
+                },
+                {
+                  url: null,
+                  label: 'Next &raquo;',
+                  page: null,
+                  active: false
+                }
+              ],
+              next_page_url: null,
+              path: 'http://192.168.1.22:8000/api/customers',
+              per_page: 15,
+              prev_page_url: null,
+              to: 4,
+              total: 4
+            }
+          }
+          resolve(mockCustomersResponse as T)
+        } else if (endpoint === '/companies') {
+          // Mock companies response with proper pagination structure
+          const mockCompaniesResponse = {
+            success: true,
+            message: 'Companies retrieved successfully',
+            data: {
+              current_page: 1,
+              data: [
+                {
+                  id: 1,
+                  company_name: 'ABC Manufacturing Ltd',
+                  email: 'contact@abc.com',
+                  address: '123 Industrial Area, Mumbai',
+                  phone: '9876543210',
+                  gst_no: '27AAAPL1234C1ZV',
+                  is_active: true,
+                  created_at: '2024-01-01T00:00:00Z',
+                  updated_at: '2024-01-01T00:00:00Z'
+                },
+                {
+                  id: 2,
+                  company_name: 'XYZ Components Pvt Ltd',
+                  email: 'info@xyz.com',
+                  address: '456 Industrial Estate, Pune',
+                  phone: '9876543211',
+                  gst_no: '27AAAPL5678D2ZV',
+                  is_active: true,
+                  created_at: '2024-01-05T00:00:00Z',
+                  updated_at: '2024-01-05T00:00:00Z'
+                },
+                {
+                  id: 3,
+                  company_name: 'Tech Solutions India',
+                  email: 'admin@techsolutions.in',
+                  address: '789 Tech Park, Bangalore',
+                  phone: '9876543212',
+                  gst_no: '27AAAPL9012E3ZV',
+                  is_active: false,
+                  created_at: '2024-01-08T00:00:00Z',
+                  updated_at: '2024-01-08T00:00:00Z'
+                },
+                {
+                  id: 4,
+                  company_name: 'Global Engineering Corp',
+                  email: 'info@globaleng.com',
+                  address: '321 Industrial Hub, Chennai',
+                  phone: '9876543213',
+                  gst_no: '27AAAPL3456F4ZV',
+                  is_active: true,
+                  created_at: '2024-01-12T00:00:00Z',
+                  updated_at: '2024-01-12T00:00:00Z'
+                }
+              ],
+              first_page_url: 'http://192.168.1.22:8000/api/companies?page=1',
+              from: 1,
+              last_page: 1,
+              last_page_url: 'http://192.168.1.22:8000/api/companies?page=1',
+              links: [
+                {
+                  url: null,
+                  label: '&laquo; Previous',
+                  page: null,
+                  active: false
+                },
+                {
+                  url: 'http://192.168.1.22:8000/api/companies?page=1',
+                  label: '1',
+                  page: 1,
+                  active: true
+                },
+                {
+                  url: null,
+                  label: 'Next &raquo;',
+                  page: null,
+                  active: false
+                }
+              ],
+              next_page_url: null,
+              path: 'http://192.168.1.22:8000/api/companies',
+              per_page: 15,
+              prev_page_url: null,
+              to: 4,
+              total: 4
+            }
+          }
+          resolve(mockCompaniesResponse as T)
+        } else if (endpoint.startsWith('/companies') && endpoint.includes('/toggle-status')) {
+          // Mock toggle company status response
+          const mockToggleResponse = {
+            success: true,
+            message: 'Company status updated successfully',
+            data: {
+              id: 1,
+              comp_name: 'ABC Manufacturing Ltd',
+              email: 'contact@abc.com',
+              address: '123 Industrial Area, Mumbai',
+              phno: '9876543210',
+              gst: '27AAAPL1234C1ZV',
+              status: 'inactive', // Toggle status
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z'
+            }
+          }
+          resolve(mockToggleResponse as T)
+        } else if (endpoint === '/companies' && options.method === 'POST') {
+          // Mock create company response
+          const mockCreateResponse = {
+            success: true,
+            message: 'Company created successfully',
+            data: {
+              id: 5,
+              comp_name: 'New Company Ltd',
+              email: 'new@company.com',
+              address: 'New Address',
+              phno: '9876543215',
+              gst: '27AAAPL9999Z9ZV',
+              status: 'active',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          }
+          resolve(mockCreateResponse as T)
+        } else if (endpoint.startsWith('/companies/') && options.method === 'DELETE') {
+          // Mock delete company response
+          const mockDeleteResponse = {
+            success: true,
+            message: 'Company deleted successfully'
+          }
+          resolve(mockDeleteResponse as T)
+        } else if (endpoint.startsWith('/companies/') && options.method === 'PUT') {
+          // Mock update company response
+          const mockUpdateResponse = {
+            success: true,
+            message: 'Company updated successfully',
+            data: {
+              id: 1,
+              comp_name: 'Updated Company Ltd',
+              email: 'updated@company.com',
+              address: 'Updated Address',
+              phno: '9876543216',
+              gst: '27AAAPL8888Z8ZV',
+              status: 'active',
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: new Date().toISOString()
+            }
+          }
+          resolve(mockUpdateResponse as T)
+        } else if (endpoint === '/superadmin/delivery-challans') {
+          // Mock superadmin delivery challans response with proper pagination structure
+          const mockSuperadminDeliveryChallansResponse = {
+            success: true,
+            message: 'Delivery challans retrieved successfully',
+            data: [
+              {
+                id: '1',
+                challan_no: 'DC-20240115-001',
+                to: 'ABC Manufacturing Ltd',
+                part_no: 'PO-2024-001',
+                status: 'delivered',
+                challan_date: '2024-01-15T10:00:00Z',
+                signature: 'Raj Kumar',
+                notes: 'Delivered successfully'
+              },
+              {
+                id: '2',
+                challan_no: 'DC-20240120-002',
+                to: 'XYZ Components Pvt Ltd',
+                part_no: 'PO-2024-002',
+                status: 'in_transit',
+                challan_date: '2024-01-20T09:00:00Z',
+                signature: 'Amit Singh',
+                notes: 'In transit'
+              },
+              {
+                id: '3',
+                challan_no: 'DC-20240125-003',
+                to: 'Tech Solutions India',
+                part_no: 'PO-2024-003',
+                status: 'pending',
+                challan_date: '2024-01-25T11:00:00Z',
+                signature: '',
+                notes: 'Pending delivery'
+              },
+              {
+                id: '4',
+                challan_no: 'DC-20240110-004',
+                to: 'Global Engineering Corp',
+                part_no: 'PO-2024-004',
+                status: 'cancelled',
+                challan_date: '2024-01-10T15:30:00Z',
+                signature: '',
+                notes: 'Cancelled'
+              }
+            ]
+          }
+          resolve(mockSuperadminDeliveryChallansResponse as T)
+        } else if (endpoint === '/superadmin/delivery-challans' && options.method === 'POST') {
+          // Mock create delivery challan response for superadmin
+          const mockCreateResponse = {
+            success: true,
+            message: 'Delivery challan created successfully',
+            data: {
+              id: '5',
+              challan_no: 'DC-20240216-005',
+              to: 'New Company Ltd',
+              part_no: 'PO-2024-005',
+              status: 'pending',
+              challan_date: new Date().toISOString(),
+              signature: '',
+              notes: 'New delivery challan'
+            }
+          }
+          resolve(mockCreateResponse as T)
+        } else if (endpoint.startsWith('/superadmin/delivery-challans/') && options.method === 'DELETE') {
+          // Mock delete delivery challan response for superadmin
+          const mockDeleteResponse = {
+            success: true,
+            message: 'Delivery challan deleted successfully'
+          }
+          resolve(mockDeleteResponse as T)
+        } else if (endpoint.startsWith('/superadmin/delivery-challans/') && options.method === 'PUT') {
+          // Mock update delivery challan response for superadmin
+          const mockUpdateResponse = {
+            success: true,
+            message: 'Delivery challan updated successfully',
+            data: {
+              id: '1',
+              challan_no: 'DC-20240115-001',
+              to: 'Updated Company Ltd',
+              part_no: 'PO-2024-001',
+              status: 'delivered',
+              challan_date: '2024-01-15T10:00:00Z',
+              signature: 'Updated Driver Name',
+              notes: 'Updated delivery challan'
+            }
+          }
+          resolve(mockUpdateResponse as T)
+        } else if (endpoint === '/delivery-challans') {
+          // Mock delivery challans response with proper pagination structure
+          const mockDeliveryChallansResponse = {
+            success: true,
+            message: 'Delivery challans retrieved successfully',
+            data: {
+              current_page: 1,
+              data: [
+                {
+                  id: '1',
+                  challanNumber: 'DC-20240115-001',
+                  company: 'ABC Manufacturing Ltd',
+                  orderId: 'PO-2024-001',
+                  status: 'delivered',
+                  createdDate: '2024-01-15T10:00:00Z',
+                  deliveryDate: '2024-01-18T14:30:00Z',
+                  driverName: 'Raj Kumar',
+                  driverContactNumber: '9876543210'
+                },
+                {
+                  id: '2',
+                  challanNumber: 'DC-20240120-002',
+                  company: 'XYZ Components Pvt Ltd',
+                  orderId: 'PO-2024-002',
+                  status: 'in_transit',
+                  createdDate: '2024-01-20T09:00:00Z',
+                  deliveryDate: '2024-01-25T00:00:00Z',
+                  driverName: 'Amit Singh',
+                  driverContactNumber: '9876543211'
+                },
+                {
+                  id: '3',
+                  challanNumber: 'DC-20240125-003',
+                  company: 'Tech Solutions India',
+                  orderId: 'PO-2024-003',
+                  status: 'pending',
+                  createdDate: '2024-01-25T11:00:00Z',
+                  deliveryDate: '',
+                  driverName: '',
+                  driverContactNumber: ''
+                },
+                {
+                  id: '4',
+                  challanNumber: 'DC-20240110-004',
+                  company: 'Global Engineering Corp',
+                  orderId: 'PO-2024-004',
+                  status: 'cancelled',
+                  createdDate: '2024-01-10T15:30:00Z',
+                  deliveryDate: '',
+                  driverName: '',
+                  driverContactNumber: ''
+                }
+              ],
+              first_page_url: 'http://192.168.1.22:8000/api/delivery-challans?page=1',
+              from: 1,
+              last_page: 1,
+              last_page_url: 'http://192.168.1.22:8000/api/delivery-challans?page=1',
+              links: [
+                {
+                  url: null,
+                  label: '&laquo; Previous',
+                  page: null,
+                  active: false
+                },
+                {
+                  url: 'http://192.168.1.22:8000/api/delivery-challans?page=1',
+                  label: '1',
+                  page: 1,
+                  active: true
+                },
+                {
+                  url: null,
+                  label: 'Next &raquo;',
+                  page: null,
+                  active: false
+                }
+              ],
+              next_page_url: null,
+              path: 'http://192.168.1.22:8000/api/delivery-challans',
+              per_page: 15,
+              prev_page_url: null,
+              to: 4,
+              total: 4
+            }
+          }
+          resolve(mockDeliveryChallansResponse as T)
+        } else if (endpoint.startsWith('/delivery-challans') && options.method === 'DELETE') {
+          // Mock delete delivery challan response
+          const mockDeleteResponse = {
+            success: true,
+            message: 'Delivery challan deleted successfully'
+          }
+          resolve(mockDeleteResponse as T)
+        } else if (endpoint.startsWith('/delivery-challans') && options.method === 'PUT') {
+          // Mock update delivery challan response
+          const mockUpdateResponse = {
+            success: true,
+            message: 'Delivery challan updated successfully',
+            data: {
+              id: 1,
+              challanNumber: 'DC-20240115-001',
+              company: 'Updated Company Ltd',
+              orderId: 'PO-2024-001',
+              status: 'delivered',
+              createdDate: '2024-01-15',
+              deliveryDate: '2024-01-18',
+              driverName: 'Updated Driver Name',
+              driverContactNumber: '9876543216'
+            }
+          }
+          resolve(mockUpdateResponse as T)
+        } else if (endpoint === '/company-users') {
+          // Mock company users response
+          const mockCompanyUsersResponse = {
+            success: true,
+            message: 'Company users retrieved successfully',
+            data: [
+              {
+                id: 1,
+                name: 'John Doe',
+                email: 'john.doe@company.com',
+                phone: '9876543210',
+                department: 'IT',
+                role: 'admin',
+                company_id: 1,
+                company_name: 'ABC Manufacturing Ltd',
+                contact_no: '9876543210',
+                is_active: true,
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-01-01T00:00:00Z'
+              },
+              {
+                id: 2,
+                name: 'Jane Smith',
+                email: 'jane.smith@company.com',
+                phone: '9876543211',
+                department: 'Operations',
+                role: 'user',
+                company_id: 1,
+                company_name: 'ABC Manufacturing Ltd',
+                contact_no: '9876543211',
+                is_active: true,
+                created_at: '2024-01-02T00:00:00Z',
+                updated_at: '2024-01-02T00:00:00Z'
+              },
+              {
+                id: 3,
+                name: 'Mike Johnson',
+                email: 'mike.johnson@company.com',
+                phone: '9876543212',
+                department: 'Sales',
+                role: 'user',
+                company_id: 2,
+                company_name: 'XYZ Components Pvt Ltd',
+                contact_no: '9876543212',
+                is_active: false,
+                created_at: '2024-01-03T00:00:00Z',
+                updated_at: '2024-01-03T00:00:00Z'
+              },
+              {
+                id: 4,
+                name: 'Sarah Wilson',
+                email: 'sarah.wilson@company.com',
+                phone: '9876543213',
+                department: 'Finance',
+                role: 'admin',
+                company_id: 2,
+                company_name: 'XYZ Components Pvt Ltd',
+                contact_no: '9876543213',
+                is_active: true,
+                created_at: '2024-01-04T00:00:00Z',
+                updated_at: '2024-01-04T00:00:00Z'
+              }
+            ]
+          }
+          resolve(mockCompanyUsersResponse as T)
+        } else {
+          // Generic mock response for other endpoints
+          resolve({ success: true, data: [] } as T)
+        }
+      }, 500) // Simulate network delay
+    })
   }
 
   async get<T>(endpoint: string): Promise<T> {
@@ -75,6 +936,7 @@ class ApiClient {
   }
 
   async post<T>(endpoint: string, data?: any): Promise<T> {
+    console.log('API POST Request:', endpoint, data)
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,

@@ -16,9 +16,38 @@ import {
   Calendar,
   Zap
 } from 'lucide-react'
-import { customerApi, partApi } from '../services'
+import { superadminApi } from '../services/superadminApi'
+
+interface DashboardResponse {
+  success: boolean
+  message: string
+  data: {
+    companies: any[]
+    company_users: any[]
+    customers: any[]
+    parts: any[]
+    orders: any[]
+    delivery_challans: any[]
+    summary: {
+      total_companies: number
+      total_company_users: number
+      total_customers: number
+      total_parts: number
+      total_orders: number
+      total_delivery_challans: number
+    }
+    role_summary: {
+      superadmin: number
+      admin: number
+      supervisor: number
+      operator: number
+    }
+  }
+}
 
 interface DashboardStats {
+  totalCompanies: number
+  totalCompanyUsers: number
   totalCustomers: number
   totalParts: number
   totalOrders: number
@@ -30,6 +59,12 @@ interface DashboardStats {
   conversionRate: number
   systemHealth: number
   activeUsers: number
+  roleSummary: {
+    superadmin: number
+    admin: number
+    supervisor: number
+    operator: number
+  }
 }
 
 interface ChartData {
@@ -47,6 +82,8 @@ interface RevenueData {
 
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({
+    totalCompanies: 0,
+    totalCompanyUsers: 0,
     totalCustomers: 0,
     totalParts: 0,
     totalOrders: 0,
@@ -57,7 +94,13 @@ const Dashboard: React.FC = () => {
     avgOrderValue: 0,
     conversionRate: 0,
     systemHealth: 0,
-    activeUsers: 0
+    activeUsers: 0,
+    roleSummary: {
+      superadmin: 0,
+      admin: 0,
+      supervisor: 0,
+      operator: 0
+    }
   })
   const [revenueData, setRevenueData] = useState<RevenueData[]>([])
   const [companyGrowthData, setCompanyGrowthData] = useState<ChartData>({ labels: [], values: [] })
@@ -78,39 +121,61 @@ const Dashboard: React.FC = () => {
   }
 
   useEffect(() => {
-    // Fetch real data from APIs
+    // Fetch real data from superadmin dashboard API
     const fetchStats = async () => {
       try {
-        // Fetch customers and parts data
-        const [customersResponse, partsResponse] = await Promise.all([
-          customerApi.getAllCustomers().catch(() => ({ success: false, data: [] })),
-          partApi.getAllParts().catch(() => ({ success: false, data: [] }))
-        ])
-
-        let totalCustomers = 0
-        let totalParts = 0
-
-        if (customersResponse.success && Array.isArray(customersResponse.data)) {
-          totalCustomers = customersResponse.data.length
-        }
-
-        if (partsResponse.success && Array.isArray(partsResponse.data)) {
-          totalParts = partsResponse.data.length
-        }
-
-        // Calculate stats based on real data
-        const realStats: DashboardStats = {
-          totalCustomers,
-          totalParts,
-          totalOrders: totalParts, // Using parts as orders for now
-          totalDeliveryChallans: Math.floor(totalParts * 0.8), // Estimated
-          totalRevenue: totalParts * 5000, // Estimated revenue per part
-          monthlyRevenue: Math.floor(totalParts * 500), // Estimated monthly
-          revenueGrowth: 12.5,
-          avgOrderValue: 5000,
-          conversionRate: 68.4,
-          systemHealth: 98.7,
-          activeUsers: 892
+        const dashboardResponse = await superadminApi.getDashboard() as DashboardResponse
+        
+        if (dashboardResponse.success && dashboardResponse.data) {
+          const { summary, role_summary } = dashboardResponse.data
+          
+          const realStats: DashboardStats = {
+            totalCompanies: summary.total_companies || 0,
+            totalCompanyUsers: summary.total_company_users || 0,
+            totalCustomers: summary.total_customers || 0,
+            totalParts: summary.total_parts || 0,
+            totalOrders: summary.total_orders || 0,
+            totalDeliveryChallans: summary.total_delivery_challans || 0,
+            totalRevenue: summary.total_orders * 5000, // Estimated revenue per order
+            monthlyRevenue: Math.floor((summary.total_orders || 0) * 500), // Estimated monthly
+            revenueGrowth: 12.5,
+            avgOrderValue: 5000,
+            conversionRate: 68.4,
+            systemHealth: 98.7,
+            activeUsers: summary.total_company_users || 0,
+            roleSummary: {
+              superadmin: role_summary?.superadmin || 0,
+              admin: role_summary?.admin || 0,
+              supervisor: role_summary?.supervisor || 0,
+              operator: role_summary?.operator || 0
+            }
+          }
+          
+          setStats(realStats)
+        } else {
+          // Fallback to mock data if API fails
+          const fallbackStats: DashboardStats = {
+            totalCompanies: 18,
+            totalCompanyUsers: 32,
+            totalCustomers: 6,
+            totalParts: 6,
+            totalOrders: 9,
+            totalDeliveryChallans: 3,
+            totalRevenue: 45000,
+            monthlyRevenue: 4500,
+            revenueGrowth: 12.5,
+            avgOrderValue: 5000,
+            conversionRate: 68.4,
+            systemHealth: 98.7,
+            activeUsers: 32,
+            roleSummary: {
+              superadmin: 1,
+              admin: 8,
+              supervisor: 11,
+              operator: 13
+            }
+          }
+        setStats(fallbackStats)
         }
 
         const mockRevenueData: RevenueData[] = [
@@ -134,7 +199,6 @@ const Dashboard: React.FC = () => {
           colors: ['#1e40af', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa', '#3b82f6', '#1e40af', '#1e3a8a']
         }
 
-        setStats(realStats)
         setRevenueData(mockRevenueData)
         setCompanyGrowthData(mockCompanyGrowth)
       } catch (error) {
@@ -158,8 +222,8 @@ const Dashboard: React.FC = () => {
       trendLabel: 'vs last month'
     },
     {
-      title: 'Total Customers',
-      value: stats.totalCustomers,
+      title: 'Total Companies',
+      value: stats.totalCompanies,
       icon: Building2,
       color: 'text-blue-600',
       bgColor: 'bg-gradient-to-r from-blue-500 to-blue-600',
@@ -167,8 +231,8 @@ const Dashboard: React.FC = () => {
       trendLabel: 'new this month'
     },
     {
-      title: 'Total Parts',
-      value: stats.totalParts,
+      title: 'Total Customers',
+      value: stats.totalCustomers,
       icon: Users,
       color: 'text-purple-600',
       bgColor: 'bg-gradient-to-r from-purple-500 to-purple-600',
@@ -185,9 +249,9 @@ const Dashboard: React.FC = () => {
       trendLabel: 'uptime score'
     },
     {
-      title: 'Avg Order Value',
-      value: `₹${stats.avgOrderValue}`,
-      icon: TrendingUp,
+      title: 'Total Parts',
+      value: stats.totalParts,
+      icon: FileText,
       color: 'text-orange-600',
       bgColor: 'bg-gradient-to-r from-orange-500 to-orange-600',
       trend: 5.2,

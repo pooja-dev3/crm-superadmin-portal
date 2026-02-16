@@ -63,22 +63,53 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
   const validateForm = (): boolean => {
     const newErrors: Partial<CompanyFormData> = {}
     
+    // Company Name validation
     if (!formData.company_name.trim()) {
       newErrors.company_name = 'Company name is required'
+    } else if (formData.company_name.trim().length < 2) {
+      newErrors.company_name = 'Company name must be at least 2 characters'
+    } else if (formData.company_name.trim().length > 200) {
+      newErrors.company_name = 'Company name must be less than 200 characters'
+    } else if (!/^[a-zA-Z0-9\s&.,'-]+$/.test(formData.company_name.trim())) {
+      newErrors.company_name = 'Company name contains invalid characters'
     }
     
+    // Email validation
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format'
+    } else if (formData.email.trim().length > 255) {
+      newErrors.email = 'Email must be less than 255 characters'
     }
     
+    // Phone validation
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required'
+    } else if (!/^[+]?[\d\s\-\(\)]{10,}$/.test(formData.phone.replace(/\s/g, ''))) {
+      newErrors.phone = 'Invalid phone number format'
+    } else if (formData.phone.replace(/\D/g, '').length < 10) {
+      newErrors.phone = 'Phone number must be at least 10 digits'
+    } else if (formData.phone.replace(/\D/g, '').length > 15) {
+      newErrors.phone = 'Phone number must be less than 15 digits'
     }
     
+    // Address validation
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required'
+    } else if (formData.address.trim().length < 10) {
+      newErrors.address = 'Address must be at least 10 characters'
+    } else if (formData.address.trim().length > 500) {
+      newErrors.address = 'Address must be less than 500 characters'
+    }
+    
+    // GST Number validation
     if (!formData.gst_no.trim()) {
       newErrors.gst_no = 'GST number is required'
+    } else if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/.test(formData.gst_no.replace(/\s/g, '').toUpperCase())) {
+      newErrors.gst_no = 'Invalid GST number format (e.g., 27ABCDE1234F1Z5)'
+    } else if (formData.gst_no.replace(/\s/g, '').length !== 15) {
+      newErrors.gst_no = 'GST number must be exactly 15 characters'
     }
 
     setErrors(newErrors)
@@ -131,7 +162,7 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form id="edit-company-form" onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="company_name" className="block text-sm font-medium text-gray-700">
                   Company Name *
@@ -246,8 +277,8 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
           <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
             <button
               type="submit"
+              form="edit-company-form"
               disabled={isSubmitting}
-              onClick={handleSubmit}
               className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-900 text-base font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
             >
               {isSubmitting ? 'Updating...' : 'Update Company'}

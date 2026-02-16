@@ -9,6 +9,7 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
 
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -16,12 +17,64 @@ const Login: React.FC = () => {
 
   const from = location.state?.from?.pathname || '/dashboard'
 
+  const validateForm = (): boolean => {
+    const errors: { email?: string; password?: string } = {}
+
+    // Email validation
+    if (!email.trim()) {
+      errors.email = 'Email is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = 'Please enter a valid email address'
+    } else if (email.length > 254) {
+      errors.email = 'Email address is too long'
+    }
+
+    // Password validation
+    if (!password.trim()) {
+      errors.password = 'Password is required'
+    } else if (password.length < 6) {
+      errors.password = 'Password must be at least 6 characters long'
+    } else if (password.length > 128) {
+      errors.password = 'Password is too long'
+    } else if (!/(?=.*[a-z])/.test(password)) {
+      errors.password = 'Password must contain at least one lowercase letter'
+    } else if (!/(?=.*\d)/.test(password)) {
+      errors.password = 'Password must contain at least one number'
+    }
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword)
   }
 
+  const handleInputChange = (field: 'email' | 'password', value: string) => {
+    if (field === 'email') {
+      setEmail(value)
+    } else {
+      setPassword(value)
+    }
+    
+    // Clear field-specific error when user starts typing
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => ({ ...prev, [field]: undefined }))
+    }
+    
+    // Clear general error when user makes any change
+    if (error) {
+      setError('')
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!validateForm()) {
+      return
+    }
+    
     setError('')
     setIsLoading(true)
 
@@ -34,7 +87,7 @@ const Login: React.FC = () => {
         setError('Invalid email or password')
       }
     } catch (err) {
-      setError('An error occurred during login')
+      setError('An error occurred during login. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -94,11 +147,23 @@ const Login: React.FC = () => {
                     autoComplete="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="appearance-none block w-full pl-10 pr-3 py-3 bg-white/5 border border-white/20 rounded-xl placeholder-blue-200 text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:bg-white/10 transition-all duration-200 sm:text-sm backdrop-blur-sm"
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className={`appearance-none block w-full pl-10 pr-3 py-3 bg-white/5 border rounded-xl placeholder-blue-200 text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:bg-white/10 transition-all duration-200 sm:text-sm backdrop-blur-sm ${
+                      fieldErrors.email 
+                        ? 'border-red-400 focus:ring-red-400/50 focus:border-red-400' 
+                        : 'border-white/20 focus:ring-white/50 focus:border-white/50'
+                    }`}
                     placeholder="Enter your email"
                   />
                 </div>
+                {fieldErrors.email && (
+                  <div className="mt-2 text-red-300 text-xs flex items-center">
+                    <div className="w-3 h-3 bg-red-400 rounded-full flex items-center justify-center mr-1">
+                      <span className="text-xs">!</span>
+                    </div>
+                    {fieldErrors.email}
+                  </div>
+                )}
               </div>
 
               {/* Password Field */}
@@ -117,8 +182,12 @@ const Login: React.FC = () => {
                     autoComplete="current-password"
                     required
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="appearance-none block w-full pl-10 pr-12 py-3 bg-white/5 border border-white/20 rounded-xl placeholder-blue-200 text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 focus:bg-white/10 transition-all duration-200 sm:text-sm backdrop-blur-sm"
+                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    className={`appearance-none block w-full pl-10 pr-12 py-3 bg-white/5 border rounded-xl placeholder-blue-200 text-white focus:outline-none focus:ring-2 focus:bg-white/10 transition-all duration-200 sm:text-sm backdrop-blur-sm ${
+                      fieldErrors.password 
+                        ? 'border-red-400 focus:ring-red-400/50 focus:border-red-400' 
+                        : 'border-white/20 focus:ring-white/50 focus:border-white/50'
+                    }`}
                     placeholder="Enter your password"
                   />
                   <button
@@ -134,6 +203,14 @@ const Login: React.FC = () => {
                     )}
                   </button>
                 </div>
+                {fieldErrors.password && (
+                  <div className="mt-2 text-red-300 text-xs flex items-center">
+                    <div className="w-3 h-3 bg-red-400 rounded-full flex items-center justify-center mr-1">
+                      <span className="text-xs">!</span>
+                    </div>
+                    {fieldErrors.password}
+                  </div>
+                )}
               </div>
 
               {/* Error Message */}
@@ -190,7 +267,7 @@ const Login: React.FC = () => {
                   </p>
                   <p className="flex items-center justify-center">
                     <Lock className="w-4 h-4 mr-2" />
-                    password123
+                    password
                   </p>
                 </div>
               </div>

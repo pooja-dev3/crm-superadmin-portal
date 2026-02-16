@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { customerApi } from '../services/customers'
 import { partApi } from '../services/parts'
+import { companyApi, type Company } from '../services/companies'
 import type { CreatePartRequest, Customer } from '../types/api'
 
 interface AddPartModalProps {
@@ -17,7 +18,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
     drawing_no: '',
     rev_no: '',
     net_wt: undefined,
-    thickness: '',
+    thickness: undefined,
     tool_information: '',
     raw_material: '',
     drawing_location: '',
@@ -29,9 +30,11 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
     po_qty: undefined,
     po_drg_rev: '',
     acknowledgement_remarks: '',
-    reqd_date_as_per_po: ''
+    reqd_date_as_per_po: '',
+    comp_name: ''
   })
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false)
   const [errors, setErrors] = useState<Partial<CreatePartRequest>>({})
@@ -39,16 +42,47 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
   useEffect(() => {
     if (isOpen) {
       fetchCustomers()
+      fetchCompanies()
     }
   }, [isOpen])
+
+  const fetchCompanies = async () => {
+    try {
+      const response = await companyApi.getAllCompanies()
+      if (response.success && Array.isArray(response.data)) {
+        setCompanies(response.data)
+      } else {
+        setCompanies([])
+      }
+    } catch (error) {
+      console.error('Error fetching companies:', error)
+    }
+  }
 
   const fetchCustomers = async () => {
     setIsLoadingCustomers(true)
     try {
+      console.log('Fetching customers for parts modal...')
       const response = await customerApi.getAllCustomers()
-      if (response.success && Array.isArray(response.data.data)) {
-        setCustomers(response.data.data)
+      console.log('Customers API response:', response)
+      // Handle both real API and mock API response structures
+      if (response.success) {
+        if (Array.isArray(response.data)) {
+          // Real API returns simple array: { success: true, data: [...] }
+          console.log('Setting customers from direct array:', response.data)
+          console.log('First customer object:', response.data[0])
+          setCustomers(response.data)
+        } else if (response.data && Array.isArray(response.data.data)) {
+          // Mock API returns paginated: { success: true, data: { data: [...] } }
+          console.log('Setting customers from paginated data:', response.data.data)
+          console.log('First customer object:', response.data.data[0])
+          setCustomers(response.data.data)
+        } else {
+          console.log('No customers data found in response')
+          setCustomers([])
+        }
       } else {
+        console.log('Customers API response not successful')
         setCustomers([])
       }
     } catch (error) {
@@ -68,6 +102,9 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
     } else if (type === 'number') {
       const numValue = value === '' ? undefined : Number(value)
       setFormData(prev => ({ ...prev, [name]: numValue }))
+    } else if (name === 'customer_id') {
+      const customerId = value === '' ? 0 : Number(value)
+      setFormData(prev => ({ ...prev, [name]: customerId }))
     } else {
       setFormData(prev => ({ ...prev, [name]: value }))
     }
@@ -78,11 +115,22 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
     }
   }
 
-  const validateForm = (): boolean => {
-    const newErrors: Partial<CreatePartRequest> = {}
+  const handleCompanyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFormData(prev => ({ ...prev, comp_name: e.target.value }))
+    // Clear error when user selects a company
+    if (errors.comp_name) {
+      setErrors(prev => ({ ...prev, comp_name: undefined }))
+    }
+  }
 
-    if (!formData.customer_id || formData.customer_id === 0) {
-      (newErrors as any).customer_id = 'Customer is required'
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.customer_id) {
+      newErrors.customer_id = 'Customer is required'
+    }
+    if (!formData.comp_name.trim()) {
+      newErrors.comp_name = 'Company selection is required'
     }
     if (!formData.part_description.trim()) {
       newErrors.part_description = 'Part description is required'
@@ -91,7 +139,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
       newErrors.drawing_no = 'Drawing number is required'
     }
 
-    setErrors(newErrors)
+    setErrors(newErrors as Partial<CreatePartRequest>)
     return Object.keys(newErrors).length === 0
   }
 
@@ -121,7 +169,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
       drawing_no: '',
       rev_no: '',
       net_wt: undefined,
-      thickness: '',
+      thickness: undefined,
       tool_information: '',
       raw_material: '',
       drawing_location: '',
@@ -133,7 +181,8 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
       po_qty: undefined,
       po_drg_rev: '',
       acknowledgement_remarks: '',
-      reqd_date_as_per_po: ''
+      reqd_date_as_per_po: '',
+      comp_name: ''
     })
     setErrors({})
     onClose()
@@ -176,22 +225,50 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
                   <select
                     id="customer_id"
                     name="customer_id"
-                    value={formData.customer_id}
+                    value={formData.customer_id || ''}
                     onChange={handleInputChange}
                     disabled={isLoadingCustomers}
                     className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
                       errors.customer_id ? 'border-red-300' : 'border-gray-300'
                     }`}
                   >
-                    <option value={0}>Select a customer</option>
-                    {Array.isArray(customers) && customers.map(customer => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </option>
-                    ))}
+                    <option value="">Select a customer</option>
+                    {customers.map(customer => {
+                      console.log('Rendering customer option:', customer.id, customer.name)
+                      return (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </option>
+                      )
+                    })}
                   </select>
                   {errors.customer_id && (
                     <p className="mt-1 text-sm text-red-600">{errors.customer_id}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="company" className="block text-sm font-medium text-gray-700">
+                    Company *
+                  </label>
+                  <select
+                    id="company"
+                    name="company"
+                    value={formData.comp_name}
+                    onChange={handleCompanyChange}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                      errors.comp_name ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Select a company</option>
+                    {companies.map(company => (
+                      <option key={company.id} value={company.comp_name}>
+                        {company.comp_name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.comp_name && (
+                    <p className="mt-1 text-sm text-red-600">{errors.comp_name}</p>
                   )}
                 </div>
 
@@ -271,13 +348,14 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
                     Thickness
                   </label>
                   <input
-                    type="text"
+                    type="number"
                     id="thickness"
                     name="thickness"
-                    value={formData.thickness}
+                    value={formData.thickness || ''}
                     onChange={handleInputChange}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
                     placeholder="Enter thickness"
+                    step="0.01"
                   />
                 </div>
 

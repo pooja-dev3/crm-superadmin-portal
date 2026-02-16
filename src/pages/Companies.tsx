@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Edit, Ban, CheckCircle, XCircle } from 'lucide-react'
-import { companyApi } from '../services'
+import { Plus, Search, Edit, Trash2, Eye, Power, PowerOff } from 'lucide-react'
+import { superadminApi } from '../services/superadminApi'
 import type { Company } from '../services/companies'
 import AddCompanyModal from '../components/AddCompanyModal'
 import EditCompanyModal from '../components/EditCompanyModal'
+import { useToast } from '../contexts/ToastContext'
 
 const Companies: React.FC = () => {
   const [companies, setCompanies] = useState<Company[]>([])
@@ -15,6 +16,7 @@ const Companies: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
+  const { addToast } = useToast()
 
   const navigate = useNavigate()
 
@@ -22,16 +24,43 @@ const Companies: React.FC = () => {
     // Fetch real companies data
     const fetchCompanies = async () => {
       try {
-        const response = await companyApi.getAllCompanies()
+        const response = await superadminApi.getCompanies() as { success: boolean; data: any }
         
-        if (response.success && Array.isArray(response.data.data)) {
-          setCompanies(response.data.data)
-          setFilteredCompanies(response.data.data)
-        } else {
-          // If API fails, set empty arrays to prevent errors
-          setCompanies([])
-          setFilteredCompanies([])
+        // Handle both real API and mock API response structures
+        let companiesData: any[] = []
+        
+        if (response.success) {
+          if (Array.isArray(response.data)) {
+            // Real API returns data directly as array
+            companiesData = response.data
+          } else if (response.data && Array.isArray(response.data.data)) {
+            // Mock API returns paginated structure
+            companiesData = response.data.data
+          }
         }
+        
+        // Map API response to frontend interface
+        const mappedCompanies = companiesData.map((company: any) => ({
+          id: company.id,
+          comp_name: company.comp_name || company.company_name || '',
+          email: company.email || '',
+          address: company.address || '',
+          phone: company.phno || company.phone || '',
+          gst_no: company.gst || company.gst_no || '',
+          code: company.code || company.company_code || '',
+          phno: company.phno || company.phone || '',
+          is_active: company.status === 'active' || company.is_active || false,
+          created_at: company.created_at || new Date().toISOString(),
+          updated_at: company.updated_at || new Date().toISOString()
+        }))
+        
+        // Sort by created_at descending (newest first)
+        const sortedCompanies = mappedCompanies.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+        
+        setCompanies(sortedCompanies)
+        setFilteredCompanies(sortedCompanies)
       } catch (error) {
         console.error('Error fetching companies:', error)
         // Set empty arrays to prevent map errors
@@ -51,7 +80,7 @@ const Companies: React.FC = () => {
     // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(company =>
-        company.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        company.comp_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         company.email.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
@@ -75,27 +104,84 @@ const Companies: React.FC = () => {
     setShowEditModal(true)
   }
 
-  const handleBlockCompany = async (companyId: string) => {
+  const handleToggleStatus = async (company: Company) => {
+    try {
+      const newStatus = !company.is_active
+      const confirmMessage = `Are you sure you want to ${newStatus ? 'activate' : 'deactivate'} "${company.comp_name}"?`
+      
+      if (window.confirm(confirmMessage)) {
+        // Update the company status via API
+        const response = await superadminApi.updateCompany(company.id, {
+          ...company,
+          is_active: newStatus
+        }) as { success: boolean; data: { id: number } }
+        
+        if (response.success) {
+          // Update local state
+          setCompanies(prev => 
+            prev.map(c => 
+              c.id === company.id 
+                ? { ...c, is_active: newStatus }
+                : c
+            )
+          )
+          // Show success toast
+          addToast(`Company ${newStatus ? 'activated' : 'deactivated'} successfully`, 'success')
+        } else {
+          addToast('Failed to update company status', 'error')
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling company status:', error)
+      addToast('Error updating company status', 'error')
+    }
+  }
+
+  const handleDeleteCompany = async (companyId: string) => {
     const company = companies.find(c => c.id.toString() === companyId)
     if (company) {
-      const confirmMessage = company.is_active 
-        ? `Are you sure you want to deactivate "${company.company_name}"?`
-        : `Are you sure you want to activate "${company.company_name}"?`
+      const confirmMessage = `Are you sure you want to delete "${company.comp_name}"? This action cannot be undone.`
       
       if (confirm(confirmMessage)) {
         try {
-          const response = await companyApi.toggleCompanyStatus(parseInt(companyId))
+          const response = await superadminApi.deleteCompany(parseInt(companyId)) as { success: boolean }
           if (response.success) {
             // Refresh companies list
-            const companiesResponse = await companyApi.getAllCompanies()
-            if (companiesResponse.success && Array.isArray(companiesResponse.data.data)) {
-              setCompanies(companiesResponse.data.data)
-              setFilteredCompanies(companiesResponse.data.data)
+            const companiesResponse = await superadminApi.getCompanies() as { success: boolean; data: any }
+            if (companiesResponse.success) {
+              let companiesData: any[] = []
+              if (Array.isArray(companiesResponse.data)) {
+                companiesData = companiesResponse.data
+              } else if (companiesResponse.data && Array.isArray(companiesResponse.data.data)) {
+                companiesData = companiesResponse.data.data
+              }
+              
+              const mappedCompanies = companiesData.map((company: any) => ({
+                id: company.id,
+                comp_name: company.comp_name || company.company_name || '',
+                email: company.email || '',
+                address: company.address || '',
+                phone: company.phno || company.phone || '',
+                gst_no: company.gst || company.gst_no || '',
+                code: company.code || company.company_code || '',
+                phno: company.phno || company.phone || '',
+                is_active: company.status === 'active' || company.is_active || false,
+                created_at: company.created_at || new Date().toISOString(),
+                updated_at: company.updated_at || new Date().toISOString()
+              }))
+              
+              // Sort by created_at descending (newest first)
+              const sortedCompanies = mappedCompanies.sort((a, b) => 
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              )
+              
+              setCompanies(sortedCompanies)
+              setFilteredCompanies(sortedCompanies)
             }
           }
         } catch (error) {
-          console.error('Error updating company status:', error)
-          alert('Failed to update company status')
+          console.error('Error deleting company:', error)
+          alert('Failed to delete company')
         }
       }
     }
@@ -107,26 +193,52 @@ const Companies: React.FC = () => {
 
   const handleSubmitCompany = async (companyData: any) => {
     try {
-      const response = await companyApi.createCompany({
-        company_name: companyData.company_name,
+      const response = await superadminApi.createCompany({
+        comp_name: companyData.company_name, // Map to API field name
         email: companyData.email,
         address: companyData.address,
-        phone: companyData.phone,
-        gst_no: companyData.gst_no,
-        is_active: companyData.is_active
-      })
+        phno: companyData.phone, // Map to API field name
+        gst: companyData.gst_no, // Map to API field name
+        status: companyData.is_active ? 'active' : 'inactive' // Map to API field name
+      }) as { success: boolean; data: any }
 
       if (response.success) {
         // Refresh companies list
-        const companiesResponse = await companyApi.getAllCompanies()
-        if (companiesResponse.success && Array.isArray(companiesResponse.data.data)) {
-          setCompanies(companiesResponse.data.data)
-          setFilteredCompanies(companiesResponse.data.data)
+        const companiesResponse = await superadminApi.getCompanies() as { success: boolean; data: any }
+        if (companiesResponse.success) {
+          let companiesData: any[] = []
+          if (Array.isArray(companiesResponse.data)) {
+            companiesData = companiesResponse.data
+          } else if (companiesResponse.data && Array.isArray(companiesResponse.data.data)) {
+            companiesData = companiesResponse.data.data
+          }
+          
+          const mappedCompanies = companiesData.map((company: any) => ({
+            id: company.id,
+            comp_name: company.comp_name || company.company_name || '',
+            email: company.email || '',
+            address: company.address || '',
+            phone: company.phno || company.phone || '',
+            gst_no: company.gst || company.gst_no || '',
+            code: company.code || company.company_code || '',
+            is_active: company.status === 'active' || company.is_active || false,
+            created_at: company.created_at || new Date().toISOString(),
+            updated_at: company.updated_at || new Date().toISOString()
+          }))
+          
+          // Sort by created_at descending (newest first)
+          const sortedCompanies = mappedCompanies.sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
+          
+          setCompanies(sortedCompanies)
+          setFilteredCompanies(sortedCompanies)
         }
         setShowAddModal(false)
       }
     } catch (error) {
       console.error('Error creating company:', error)
+      alert(error instanceof Error ? error.message : 'Failed to create company')
     }
   }
 
@@ -134,28 +246,53 @@ const Companies: React.FC = () => {
     if (!selectedCompany) return
     
     try {
-      const response = await companyApi.updateCompany(selectedCompany.id, {
-        company_name: companyData.company_name,
+      const response = await superadminApi.updateCompany(selectedCompany.id, {
+        comp_name: companyData.company_name, // Map to API field name
         email: companyData.email,
         address: companyData.address,
-        phone: companyData.phone,
-        gst_no: companyData.gst_no,
-        is_active: companyData.is_active
-      })
+        phno: companyData.phone, // Map to API field name
+        gst: companyData.gst_no, // Map to API field name
+        status: companyData.is_active ? 'active' : 'inactive' // Map to API field name
+      }) as { success: boolean; data: any }
       
       if (response.success) {
         setShowEditModal(false)
         setSelectedCompany(null)
         // Refresh companies list
-        const companiesResponse = await companyApi.getAllCompanies()
-        if (companiesResponse.success && Array.isArray(companiesResponse.data.data)) {
-          setCompanies(companiesResponse.data.data)
-          setFilteredCompanies(companiesResponse.data.data)
+        const companiesResponse = await superadminApi.getCompanies() as { success: boolean; data: any }
+        if (companiesResponse.success) {
+          let companiesData: any[] = []
+          if (Array.isArray(companiesResponse.data)) {
+            companiesData = companiesResponse.data
+          } else if (companiesResponse.data && Array.isArray(companiesResponse.data.data)) {
+            companiesData = companiesResponse.data.data
+          }
+          
+          const mappedCompanies = companiesData.map((company: any) => ({
+            id: company.id,
+            comp_name: company.comp_name || company.company_name || '',
+            email: company.email || '',
+            address: company.address || '',
+            phone: company.phno || company.phone || '',
+            gst_no: company.gst || company.gst_no || '',
+            code: company.code || company.company_code || '',
+            is_active: company.status === 'active' || company.is_active || false,
+            created_at: company.created_at || new Date().toISOString(),
+            updated_at: company.updated_at || new Date().toISOString()
+          }))
+          
+          // Sort by created_at descending (newest first)
+          const sortedCompanies = mappedCompanies.sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
+          
+          setCompanies(sortedCompanies)
+          setFilteredCompanies(sortedCompanies)
         }
       }
     } catch (error) {
       console.error('Error updating company:', error)
-      alert('Failed to update company')
+      alert(error instanceof Error ? error.message : 'Failed to update company')
     }
   }
 
@@ -227,6 +364,9 @@ const Companies: React.FC = () => {
                   Company Name
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Company Code
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -252,9 +392,12 @@ const Companies: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{company.company_name}</div>
+                        <div className="text-sm font-medium text-gray-900">{company.comp_name}</div>
                       </div>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {company.code || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -263,9 +406,9 @@ const Companies: React.FC = () => {
                         : 'bg-red-100 text-red-800'
                     }`}>
                       {company.is_active ? (
-                        <CheckCircle className="w-4 h-4 mr-1" />
+                        <span className="w-4 h-4 mr-1">●</span>
                       ) : (
-                        <XCircle className="w-4 h-4 mr-1" />
+                        <span className="w-4 h-4 mr-1">●</span>
                       )}
                       {company.is_active ? 'Active' : 'Inactive'}
                     </span>
@@ -285,6 +428,28 @@ const Companies: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">
                       <button
+                        onClick={() => handleToggleStatus(company)}
+                        className={`p-1 rounded transition-colors ${
+                          company.is_active 
+                            ? 'text-orange-600 hover:text-orange-900 hover:bg-orange-50' 
+                            : 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                        }`}
+                        title={company.is_active ? 'Deactivate Company' : 'Activate Company'}
+                      >
+                        {company.is_active ? (
+                          <PowerOff className="h-4 w-4" />
+                        ) : (
+                          <Power className="h-4 w-4" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => navigate(`/companies/${company.id}`)}
+                        className="text-blue-600 hover:text-blue-900 p-1"
+                        title="View Details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
                         onClick={() => handleEditCompany(company)}
                         className="text-yellow-600 hover:text-yellow-900 p-1"
                         title="Edit"
@@ -292,15 +457,11 @@ const Companies: React.FC = () => {
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleBlockCompany(company.id.toString())}
-                        className={`p-1 ${
-                          company.is_active
-                            ? 'text-red-600 hover:text-red-900'
-                            : 'text-green-600 hover:text-green-900'
-                        }`}
-                        title={company.is_active ? 'Deactivate' : 'Activate'}
+                        onClick={() => handleDeleteCompany(company.id.toString())}
+                        className="p-1 text-red-600 hover:text-red-900"
+                        title="Delete"
                       >
-                        <Ban className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </td>

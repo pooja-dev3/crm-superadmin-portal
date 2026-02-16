@@ -3,32 +3,34 @@ import type { ApiResponse } from '../types/api'
 
 export interface Company {
   id: number
-  company_name: string
+  comp_name: string
   email: string
   address: string
   phone: string
   gst_no: string
+  code: string
+  phno: string
   is_active: boolean
   created_at: string
   updated_at: string
 }
 
 export interface CreateCompanyRequest {
-  company_name: string
+  comp_name: string
   email: string
   address: string
-  phone: string
-  gst_no: string
-  is_active: boolean
+  phno: string
+  gst: string
+  status: 'active' | 'inactive'
 }
 
 export interface UpdateCompanyRequest {
-  company_name: string
+  comp_name: string
   email: string
   address: string
-  phone: string
-  gst_no: string
-  is_active: boolean
+  phno: string
+  gst: string
+  status: 'active' | 'inactive'
 }
 
 export interface PaginatedCompaniesResponse {

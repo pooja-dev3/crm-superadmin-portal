@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Plus, Eye, Edit, Trash2, Package, Building, Calendar, Weight } from 'lucide-react'
-import { partApi, customerApi } from '../services'
+import { superadminApi } from '../services/superadminApi'
 import type { PartWithCustomer, CustomerWithParts } from '../types/api'
 import AddPartModal from '../components/AddPartModal'
+import EditPartModal from '../components/EditPartModal'
 
 const Parts: React.FC = () => {
-  const [parts, setParts] = useState<PartWithCustomer[]>([])
-  const [filteredParts, setFilteredParts] = useState<PartWithCustomer[]>([])
-  const [customers, setCustomers] = useState<CustomerWithParts[]>([])
+  const [parts, setParts] = useState<any[]>([])
+  const [filteredParts, setFilteredParts] = useState<any[]>([])
+  const [customers, setCustomers] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [customerFilter, setCustomerFilter] = useState('all')
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedPart, setSelectedPart] = useState<PartWithCustomer | null>(null)
+  const [selectedPart, setSelectedPart] = useState<any | null>(null)
   const [showViewModal, setShowViewModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -44,20 +46,38 @@ const Parts: React.FC = () => {
     setIsLoading(true)
     try {
       const [partsResponse, customersResponse] = await Promise.all([
-        partApi.getAllParts().catch(() => ({ success: false, data: [] })),
-        customerApi.getAllCustomers().catch(() => ({ success: false, data: [] }))
-      ])
+        superadminApi.getParts().catch(() => ({ success: false, data: [] })),
+        superadminApi.getCustomers().catch(() => ({ success: false, data: [] }))
+      ]) as [{ success: boolean; data: any }, { success: boolean; data: any }]
 
-      if (partsResponse.success && Array.isArray(partsResponse.data)) {
-        setParts(partsResponse.data)
-        setFilteredParts(partsResponse.data)
+      // Handle parts response - check if it's paginated or direct array
+      if (partsResponse.success) {
+        let partsData: PartWithCustomer[] = []
+        if (Array.isArray(partsResponse.data)) {
+          // Direct array response
+          partsData = partsResponse.data
+        } else if (partsResponse.data && typeof partsResponse.data === 'object' && 'data' in partsResponse.data && Array.isArray((partsResponse.data as any).data)) {
+          // Paginated response
+          partsData = (partsResponse.data as any).data
+        }
+        setParts(partsData)
+        setFilteredParts(partsData)
       } else {
         setParts([])
         setFilteredParts([])
       }
 
-      if (customersResponse.success && Array.isArray(customersResponse.data)) {
-        setCustomers(customersResponse.data)
+      // Handle customers response - check if it's paginated or direct array
+      if (customersResponse.success) {
+        let customersData: CustomerWithParts[] = []
+        if (Array.isArray(customersResponse.data)) {
+          // Direct array response
+          customersData = customersResponse.data
+        } else if (customersResponse.data && typeof customersResponse.data === 'object' && 'data' in customersResponse.data && Array.isArray((customersResponse.data as any).data)) {
+          // Paginated response
+          customersData = (customersResponse.data as any).data
+        }
+        setCustomers(customersData)
       } else {
         setCustomers([])
       }
@@ -83,6 +103,35 @@ const Parts: React.FC = () => {
 
   const handleAddSuccess = () => {
     fetchData()
+  }
+
+  const handleEditPart = (part: PartWithCustomer) => {
+    setSelectedPart(part)
+    setShowEditModal(true)
+  }
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false)
+    setSelectedPart(null)
+  }
+
+  const handleEditSuccess = () => {
+    fetchData()
+  }
+
+  const handleDeletePart = async (partId: number, partDescription: string) => {
+    if (window.confirm(`Are you sure you want to delete part "${partDescription}"? This action cannot be undone.`)) {
+      try {
+        const response = await superadminApi.deletePart(partId) as { success: boolean }
+        if (response.success) {
+          // Refresh parts list
+          await fetchData()
+        }
+      } catch (error) {
+        console.error('Error deleting part:', error)
+        alert('Failed to delete part')
+      }
+    }
   }
 
   if (isLoading) {
@@ -190,13 +239,6 @@ const Parts: React.FC = () => {
                   </div>
                 )}
 
-                {part.raw_material && (
-                  <div className="flex items-center">
-                    <Package className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                    <p className="text-sm text-gray-600">Material: {part.raw_material}</p>
-                  </div>
-                )}
-
                 <div className="flex items-center justify-between pt-3 border-t">
                   <div className="flex items-center">
                     <Calendar className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
@@ -212,6 +254,24 @@ const Parts: React.FC = () => {
                       </span>
                     </div>
                   )}
+                </div>
+                <div className="flex space-x-2">
+                  <>
+                    <button
+                      onClick={() => handleEditPart(part)}
+                      className="p-1 text-blue-600 hover:text-blue-700 transition-colors"
+                      title="Edit Part"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeletePart(part.id, part.part_description)}
+                      className="p-1 text-red-600 hover:text-red-700 transition-colors"
+                      title="Delete Part"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </>
                 </div>
               </div>
             </div>
@@ -442,8 +502,19 @@ const Parts: React.FC = () => {
         onClose={() => setShowAddModal(false)}
         onSuccess={handleAddSuccess}
       />
+
+      {/* Edit Part Modal */}
+      {showEditModal && (
+        <EditPartModal
+          isOpen={showEditModal}
+          onClose={handleCloseEditModal}
+          onSuccess={handleEditSuccess}
+          part={selectedPart}
+        />
+      )}
     </div>
   )
 }
 
 export default Parts
+

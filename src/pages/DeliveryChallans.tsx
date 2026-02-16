@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Eye, Truck, CheckCircle, Clock, AlertCircle, X } from 'lucide-react'
+import { Search, Eye, Truck, CheckCircle, Clock, AlertCircle, X, Plus, Edit, Trash2 } from 'lucide-react'
+import { superadminApi } from '../services/superadminApi'
+import AddDeliveryChallanModal from '../components/AddDeliveryChallanModal'
+import EditDeliveryChallanModal from '../components/EditDeliveryChallanModal'
+import ApiStatusIndicator from '../components/ApiStatusIndicator'
 
-interface DeliveryChallan {
+interface DeliveryChallanItem {
   id: string
   challanNumber: string
   company: string
@@ -12,80 +16,90 @@ interface DeliveryChallan {
 }
 
 const DeliveryChallans: React.FC = () => {
-  const [challans, setChallans] = useState<DeliveryChallan[]>([])
-  const [filteredChallans, setFilteredChallans] = useState<DeliveryChallan[]>([])
+  const [challans, setChallans] = useState<any[]>([])
+  const [filteredChallans, setFilteredChallans] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [companyFilter, setCompanyFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [companies, setCompanies] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedChallan, setSelectedChallan] = useState<DeliveryChallan | null>(null)
+  const [selectedChallan, setSelectedChallan] = useState<any | null>(null)
   const [showViewModal, setShowViewModal] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+
+  const fetchChallans = async () => {
+    setIsLoading(true)
+    try {
+      const response = await superadminApi.getDeliveryChallans() as { success: boolean; data: any; pagination?: any }
+      console.log('Delivery Challans API Response:', response)
+      
+      // Handle real API response structure
+      if (response.success && response.data) {
+        let challansData: DeliveryChallanItem[] = []
+        
+        if (Array.isArray(response.data)) {
+          // Real API returns simple array: { success: true, data: [...] }
+          challansData = response.data.map((challan: any) => ({
+            id: challan.id.toString(),
+            challanNumber: challan.challan_no,
+            company: challan.comp_name || challan.to || '',
+            orderId: challan.part_no,
+            status: challan.status || 'pending',
+            createdDate: challan.challan_date,
+            deliveryDate: challan.challan_date, // Same as created date for now
+            driverName: challan.signature || '',
+            driverContactNumber: '',
+            notes: challan.notes || '',
+            customerName: challan.customer?.name || '',
+            partDescription: challan.part_description || '',
+            quantity: challan.quantity || 0,
+            unitRate: challan.unit_rate || '0.00',
+            total: challan.total || '0.00'
+          }))
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          // Paginated response: { success: true, data: { data: [...] } }
+          challansData = response.data.data.map((challan: any) => ({
+            id: challan.id.toString(),
+            challanNumber: challan.challan_no,
+            company: challan.comp_name || challan.to || '',
+            orderId: challan.part_no,
+            status: challan.status || 'pending',
+            createdDate: challan.challan_date,
+            deliveryDate: challan.challan_date,
+            driverName: challan.signature || '',
+            driverContactNumber: '',
+            notes: challan.notes || '',
+            customerName: challan.customer?.name || '',
+            partDescription: challan.part_description || '',
+            quantity: challan.quantity || 0,
+            unitRate: challan.unit_rate || '0.00',
+            total: challan.total || '0.00'
+          }))
+        }
+        
+        setChallans(challansData)
+        setFilteredChallans(challansData)
+        
+        // Extract unique companies
+        const uniqueCompanies = Array.from(new Set(challansData.filter(challan => challan && challan.company).map(challan => challan.company)))
+        setCompanies(uniqueCompanies)
+      } else {
+        setChallans([])
+        setFilteredChallans([])
+        setCompanies([])
+      }
+    } catch (error) {
+      console.error('Error fetching delivery challans:', error)
+      setChallans([])
+      setFilteredChallans([])
+      setCompanies([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
-    // Mock API call - replace with actual API
-    const fetchChallans = async () => {
-      try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000))
-
-        // Mock data
-        const mockChallans: DeliveryChallan[] = [
-          {
-            id: '1',
-            challanNumber: 'DC-001',
-            company: 'TechCorp Solutions',
-            orderId: 'ORD-001',
-            status: 'delivered',
-            createdDate: '2024-01-21',
-            deliveryDate: '2024-01-23'
-          },
-          {
-            id: '2',
-            challanNumber: 'DC-002',
-            company: 'GlobalTech Inc.',
-            orderId: 'ORD-002',
-            status: 'in_transit',
-            createdDate: '2024-01-19'
-          },
-          {
-            id: '3',
-            challanNumber: 'DC-003',
-            company: 'InnovateLabs',
-            orderId: 'ORD-003',
-            status: 'pending',
-            createdDate: '2024-01-17'
-          },
-          {
-            id: '4',
-            challanNumber: 'DC-004',
-            company: 'DataFlow Systems',
-            orderId: 'ORD-004',
-            status: 'delivered',
-            createdDate: '2024-01-16',
-            deliveryDate: '2024-01-18'
-          },
-          {
-            id: '5',
-            challanNumber: 'DC-005',
-            company: 'CloudSync Ltd.',
-            orderId: 'ORD-005',
-            status: 'cancelled',
-            createdDate: '2024-01-15'
-          }
-        ]
-
-        const uniqueCompanies = [...new Set(mockChallans.map(challan => challan.company))]
-        setCompanies(uniqueCompanies)
-        setChallans(mockChallans)
-        setFilteredChallans(mockChallans)
-      } catch (error) {
-        console.error('Error fetching delivery challans:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
     fetchChallans()
   }, [])
 
@@ -127,6 +141,41 @@ const DeliveryChallans: React.FC = () => {
     setSelectedChallan(null)
   }
 
+  const handleAddSuccess = () => {
+    fetchChallans()
+  }
+
+  const handleEditChallan = (challan: DeliveryChallanItem) => {
+    setSelectedChallan(challan)
+    setShowEditModal(true)
+  }
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false)
+    setSelectedChallan(null)
+  }
+
+  const handleEditSuccess = () => {
+    fetchChallans()
+  }
+
+  const handleDeleteChallan = async (challanId: string, challanNumber: string) => {
+    if (window.confirm(`Are you sure you want to delete delivery challan "${challanNumber}"? This action cannot be undone.`)) {
+      try {
+        const response = await superadminApi.deleteDeliveryChallan(parseInt(challanId)) as { success: boolean }
+        if (response.success) {
+          alert('Delivery challan deleted successfully')
+          fetchChallans()
+        } else {
+          alert('Failed to delete delivery challan: ' + (response.message || 'Unknown error'))
+        }
+      } catch (error) {
+        console.error('Error deleting delivery challan:', error)
+        alert('Failed to delete delivery challan. Please try again.')
+      }
+    }
+  }
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'delivered':
@@ -152,11 +201,23 @@ const DeliveryChallans: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Global Delivery Challans</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          View all delivery challans across all companies in the system
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Global Delivery Challans</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            View all delivery challans across all companies in the system
+          </p>
+        </div>
+        <div className="flex items-center space-x-4">
+          <ApiStatusIndicator />
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-900 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 transition-colors"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Delivery Challan
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -236,7 +297,7 @@ const DeliveryChallans: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredChallans.map((challan) => (
+              {filteredChallans.filter(challan => challan).map((challan) => (
                 <tr key={challan.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {challan.challanNumber}
@@ -258,7 +319,7 @@ const DeliveryChallans: React.FC = () => {
                         : 'bg-red-100 text-red-800'
                     }`}>
                       {getStatusIcon(challan.status)}
-                      <span className="ml-1">{challan.status.replace('_', ' ')}</span>
+                      <span className="ml-1">{challan.status ? challan.status.replace('_', ' ') : 'Unknown'}</span>
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -270,10 +331,24 @@ const DeliveryChallans: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => handleViewChallan(challan.id)}
-                      className="text-blue-900 hover:text-blue-800 p-1"
+                      className="text-blue-900 hover:text-blue-800 p-1 mr-1"
                       title="View Challan"
                     >
                       <Eye className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleEditChallan(challan)}
+                      className="text-blue-600 hover:text-blue-700 p-1 mr-1"
+                      title="Edit Challan"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteChallan(challan.id, challan.challanNumber)}
+                      className="text-red-600 hover:text-red-700 p-1"
+                      title="Delete Challan"
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </td>
                 </tr>
@@ -388,6 +463,23 @@ const DeliveryChallans: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Add Delivery Challan Modal */}
+      <AddDeliveryChallanModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={handleAddSuccess}
+      />
+
+      {/* Edit Delivery Challan Modal */}
+      {showEditModal && (
+        <EditDeliveryChallanModal
+          isOpen={showEditModal}
+          onClose={handleCloseEditModal}
+          onSuccess={handleEditSuccess}
+          challan={selectedChallan}
+        />
       )}
     </div>
   )

@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Plus, Edit, Trash2, UserX, Key, CheckCircle, XCircle } from 'lucide-react'
-import { adminApi, type Admin } from '../services/admin'
+import { superadminApi } from '../services/superadminApi'
 import AddAdminModal from '../components/AddAdminModal'
 import EditAdminModal from '../components/EditAdminModal'
 
 const CompanyAdmins: React.FC = () => {
-  const [admins, setAdmins] = useState<Admin[]>([])
-  const [filteredAdmins, setFilteredAdmins] = useState<Admin[]>([])
+  const [admins, setAdmins] = useState<any[]>([])
+  const [filteredAdmins, setFilteredAdmins] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [companyFilter, setCompanyFilter] = useState('all')
   const [isLoading, setIsLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null)
+  const [selectedAdmin, setSelectedAdmin] = useState<any | null>(null)
 
   useEffect(() => {
     fetchAdmins()
@@ -20,14 +21,22 @@ const CompanyAdmins: React.FC = () => {
 
   const fetchAdmins = async () => {
     try {
-      const response = await adminApi.getAllAdmins()
-      if (response.success && Array.isArray(response.data.data)) {
-        setAdmins(response.data.data)
-        setFilteredAdmins(response.data.data)
-      } else {
-        setAdmins([])
-        setFilteredAdmins([])
+      const response = await superadminApi.getCompanyUsers() as { success: boolean; data: any }
+      console.log('Company Admins API Response:', response)
+      
+      // Handle real API structure only
+      let adminData: any[] = []
+      
+      if (response.success && Array.isArray(response.data)) {
+        // Real API returns simple array in response.data
+        adminData = response.data
       }
+      
+      // Sort by created_at date (latest first)
+      adminData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      
+      setAdmins(adminData)
+      setFilteredAdmins(adminData)
     } catch (error) {
       console.error('Error fetching admins:', error)
       setAdmins([])
@@ -43,10 +52,11 @@ const CompanyAdmins: React.FC = () => {
     // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(admin =>
-        admin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        admin.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        admin.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        admin.role.toLowerCase().includes(searchTerm.toLowerCase())
+        (admin.name && admin.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (admin.email && admin.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (admin.phone && admin.phone.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (admin.company && admin.company.comp_name && admin.company.comp_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (admin.role && admin.role.toLowerCase().includes(searchTerm.toLowerCase()))
       )
     }
 
@@ -57,12 +67,22 @@ const CompanyAdmins: React.FC = () => {
       )
     }
 
+    // Apply company filter
+    if (companyFilter !== 'all') {
+      filtered = filtered.filter(admin => 
+        admin.company && admin.company.comp_name === companyFilter
+      )
+    }
+
     setFilteredAdmins(filtered)
-  }, [admins, searchTerm, statusFilter])
+  }, [admins, searchTerm, statusFilter, companyFilter])
 
   const handleToggleStatus = async (adminId: number) => {
+    const admin = admins.find(a => a.id === adminId)
+    const currentStatus = admin?.is_active
+    
     try {
-      const response = await adminApi.toggleAdminStatus(adminId)
+      const response = await superadminApi.updateCompanyUser(adminId, { is_active: !currentStatus }) as { success: boolean }
       if (response.success) {
         // Refresh admins list
         await fetchAdmins()
@@ -77,7 +97,7 @@ const CompanyAdmins: React.FC = () => {
     const newPassword = prompt('Enter new password:')
     if (newPassword) {
       try {
-        const response = await adminApi.resetPassword(adminId, newPassword)
+        const response = await superadminApi.updateCompanyUser(adminId, { password: newPassword }) as { success: boolean }
         if (response.success) {
           alert('Password reset successfully')
         }
@@ -88,7 +108,7 @@ const CompanyAdmins: React.FC = () => {
     }
   }
 
-  const handleEditAdmin = (admin: Admin) => {
+  const handleEditAdmin = (admin: any) => {
     setSelectedAdmin(admin)
     setShowEditModal(true)
   }
@@ -96,7 +116,7 @@ const CompanyAdmins: React.FC = () => {
   const handleDeleteAdmin = async (adminId: number) => {
     if (window.confirm('Are you sure you want to delete this admin?')) {
       try {
-        const response = await adminApi.deleteAdmin(adminId)
+        const response = await superadminApi.deleteCompanyUser(adminId) as { success: boolean }
         if (response.success) {
           await fetchAdmins()
         }
@@ -164,6 +184,22 @@ const CompanyAdmins: React.FC = () => {
           </div>
           <div>
             <select
+              value={companyFilter}
+              onChange={(e) => setCompanyFilter(e.target.value)}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+            >
+              <option value="all">All Companies</option>
+              {Array.from(new Set(admins.filter(admin => admin.company).map(admin => admin.company.comp_name)))
+                .sort()
+                .map(companyName => (
+                  <option key={companyName} value={companyName}>
+                    {companyName}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div>
+            <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
@@ -192,7 +228,7 @@ const CompanyAdmins: React.FC = () => {
                   Phone
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Department
+                  Company
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Role
@@ -231,14 +267,20 @@ const CompanyAdmins: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {admin.phone}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {admin.department}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {admin.company ? admin.company.comp_name : 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       admin.role === 'admin' 
                         ? 'bg-blue-100 text-blue-800'
-                        : 'bg-purple-100 text-purple-800'
+                        : admin.role === 'supervisor'
+                        ? 'bg-purple-100 text-purple-800'
+                        : admin.role === 'operator'
+                        ? 'bg-gray-100 text-gray-800'
+                        : admin.role === 'superadmin'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100 text-gray-800'
                     }`}>
                       {admin.role}
                     </span>

@@ -55,22 +55,53 @@ const AddCompanyModal: React.FC<AddCompanyModalProps> = ({ isOpen, onClose, onSu
   const validateForm = (): boolean => {
     const newErrors: Partial<CompanyFormData> = {}
     
+    // Company Name validation
     if (!formData.company_name.trim()) {
       newErrors.company_name = 'Company name is required'
+    } else if (formData.company_name.trim().length < 2) {
+      newErrors.company_name = 'Company name must be at least 2 characters'
+    } else if (formData.company_name.trim().length > 200) {
+      newErrors.company_name = 'Company name must be less than 200 characters'
+    } else if (!/^[a-zA-Z0-9\s&.,'-]+$/.test(formData.company_name.trim())) {
+      newErrors.company_name = 'Company name contains invalid characters'
     }
     
+    // Email validation
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format'
+    } else if (formData.email.trim().length > 255) {
+      newErrors.email = 'Email must be less than 255 characters'
     }
     
+    // Phone validation
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required'
+    } else if (!/^[+]?[\d\s\-\(\)]{10,}$/.test(formData.phone.replace(/\s/g, ''))) {
+      newErrors.phone = 'Invalid phone number format'
+    } else if (formData.phone.replace(/\D/g, '').length < 10) {
+      newErrors.phone = 'Phone number must be at least 10 digits'
+    } else if (formData.phone.replace(/\D/g, '').length > 15) {
+      newErrors.phone = 'Phone number must be less than 15 digits'
     }
     
+    // Address validation
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required'
+    } else if (formData.address.trim().length < 10) {
+      newErrors.address = 'Address must be at least 10 characters'
+    } else if (formData.address.trim().length > 500) {
+      newErrors.address = 'Address must be less than 500 characters'
+    }
+    
+    // GST Number validation
     if (!formData.gst_no.trim()) {
       newErrors.gst_no = 'GST number is required'
+    } else if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/.test(formData.gst_no.replace(/\s/g, '').toUpperCase())) {
+      newErrors.gst_no = 'Invalid GST number format (e.g., 27ABCDE1234F1Z5)'
+    } else if (formData.gst_no.replace(/\s/g, '').length !== 15) {
+      newErrors.gst_no = 'GST number must be exactly 15 characters'
     }
 
     setErrors(newErrors)

@@ -1,65 +1,105 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Calendar, Eye, Filter, X } from 'lucide-react'
-import { partApi } from '../services'
-import type { PartWithCustomer } from '../types/api'
-
-interface Order {
-  id: string
-  orderNumber: string
-  company: string
-  status: 'pending' | 'processing' | 'completed' | 'cancelled'
-  total: number
-  createdDate: string
-}
+import { Search, Calendar, Eye, Edit, Trash2, Plus, Filter, X } from 'lucide-react'
+import { superadminApi } from '../services/superadminApi'
+import type { Order, OrderDisplay } from '../types/api'
+import AddOrderModal from '../components/AddOrderModal'
+import EditOrderModal from '../components/EditOrderModal'
 
 const Orders: React.FC = () => {
-  const [orders, setOrders] = useState<Order[]>([])
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
+  const [orders, setOrders] = useState<any[]>([])
+  const [filteredOrders, setFilteredOrders] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [companyFilter, setCompanyFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
   const [companies, setCompanies] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null)
   const [showViewModal, setShowViewModal] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
 
-  useEffect(() => {
-    // Fetch real parts data as orders
-    const fetchOrders = async () => {
-      try {
-        const response = await partApi.getAllParts().catch(() => ({ success: false, data: [] }))
+  const fetchOrders = async () => {
+    setIsLoading(true)
+    try {
+      const response = await superadminApi.getOrders() as { success: boolean; data: any }
+      console.log('Orders API Response:', response) // Debug log
+      
+      // Handle both paginated and simple array responses
+      if (response.success) {
+        let ordersData: Order[] = []
         
-        if (response.success && Array.isArray(response.data)) {
-          // Transform parts data to orders format
-          const ordersData: Order[] = response.data.map((part: PartWithCustomer) => ({
-            id: part.id.toString(),
-            orderNumber: `ORD-${part.drawing_no}`,
-            company: part.customer.name,
-            status: part.po_received ? 'completed' : 'processing' as 'pending' | 'processing' | 'completed' | 'cancelled',
-            total: part.po_qty ? part.po_qty * 1000 : 5000, // Calculate total based on quantity
-            createdDate: part.created_at.split('T')[0] // Format date
-          }))
-
-          const uniqueCompanies = [...new Set(ordersData.map(order => order.company))]
+        if (Array.isArray(response.data)) {
+          // Real API returns simple array: { success: true, data: [...] }
+          ordersData = response.data
+        } else if (response.data && Array.isArray(response.data.data)) {
+          // Mock API returns paginated: { success: true, data: { data: [...] } }
+          ordersData = response.data.data
+        }
+        
+        console.log('Orders Data after fetch:', ordersData) // Debug log
+        console.log('Orders Data length:', ordersData.length) // Debug log
+        
+        if (ordersData.length > 0) {
+          // Map API response to display format
+          const validOrders: OrderDisplay[] = ordersData.map((order: Order) => {
+            console.log('Processing order:', order) // Debug log for each order
+            return {
+              id: order.id.toString(),
+              orderNumber: order.po_no,
+              company: order.customer?.name || 'Unknown Customer',
+              status: order.po_received ? 'completed' : 'pending',
+              total: parseFloat(order.price) * order.po_qty,
+              createdDate: order.created_at?.split('T')[0] || '',
+              poQty: order.po_qty,
+              balanceQty: order.balance_qty,
+              price: order.price,
+              fgStock: order.fg_stock,
+              wipStock: order.wip_stock,
+              partDescription: order.part?.part_description || 'Unknown Part',
+              drawingNo: order.part?.drawing_no || '',
+              reqdDate: order.reqd_date_as_per_po ? order.reqd_date_as_per_po.split('T')[0] : '',
+              dispatchDate: order.dispatch_details_inv_date ? order.dispatch_details_inv_date.split('T')[0] : '',
+              invNo: order.dispatch_details_inv_no || '',
+              originalOrder: order
+            }
+          })
+          
+          console.log('Mapped Orders:', validOrders) // Debug log
+          
+          setOrders(validOrders)
+          setFilteredOrders(validOrders)
+          
+          // Extract unique companies with null check
+          const uniqueCompanies = Array.from(new Set(
+            ordersData
+              .filter((order: Order) => order.customer?.name)
+              .map((order: Order) => order.customer.name)
+          ))
           setCompanies(uniqueCompanies)
-          setOrders(ordersData)
-          setFilteredOrders(ordersData)
         } else {
+          console.log('No orders found, setting empty arrays')
           setOrders([])
           setFilteredOrders([])
           setCompanies([])
         }
-      } catch (error) {
-        console.error('Error fetching orders:', error)
+      } else {
+        console.log('Invalid response structure:', response)
         setOrders([])
         setFilteredOrders([])
         setCompanies([])
-      } finally {
-        setIsLoading(false)
       }
+    } catch (error) {
+      console.error('Error fetching orders:', error)
+      setOrders([])
+      setFilteredOrders([])
+      setCompanies([])
+    } finally {
+      setIsLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchOrders()
   }, [])
 
@@ -70,7 +110,8 @@ const Orders: React.FC = () => {
     if (searchTerm) {
       filtered = filtered.filter(order =>
         order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.company.toLowerCase().includes(searchTerm.toLowerCase())
+        order.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.status.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
@@ -100,8 +141,51 @@ const Orders: React.FC = () => {
     }
   }
 
+  const handleAddOrder = () => {
+    setShowAddModal(true)
+  }
+
+  const handleEditOrder = (order: OrderDisplay) => {
+    setSelectedOrder(order)
+    setShowEditModal(true)
+  }
+
+  const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
+    if (window.confirm(`Are you sure you want to delete order "${orderNumber}"? This action cannot be undone.`)) {
+      try {
+        const response = await superadminApi.deleteOrder(parseInt(orderId)) as { success: boolean }
+        if (response.success) {
+          // Show success message
+          alert('Order deleted successfully')
+          // Refresh orders list
+          await fetchOrders()
+        } else {
+          alert('Failed to delete order: ' + (response.message || 'Unknown error'))
+        }
+      } catch (error) {
+        console.error('Error deleting order:', error)
+        alert('Failed to delete order. Please try again.')
+      }
+    }
+  }
+
   const handleCloseModal = () => {
     setShowViewModal(false)
+    setShowAddModal(false)
+    setShowEditModal(false)
+    setSelectedOrder(null)
+  }
+
+  const handleAddSuccess = () => {
+    fetchOrders()
+    setShowAddModal(false)
+  }
+
+  const handleEditSuccess = () => {
+    console.log('handleEditSuccess called') // Debug log
+    console.log('Immediately calling fetchOrders') // Debug log
+    fetchOrders()
+    setShowEditModal(false)
     setSelectedOrder(null)
   }
 
@@ -115,11 +199,20 @@ const Orders: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Global Orders</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          View all orders across all companies in the system
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Global Orders</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            View all orders across all companies in the system
+          </p>
+        </div>
+        <button
+          onClick={handleAddOrder}
+          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-900 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 transition-colors"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Order
+        </button>
       </div>
 
       {/* Filters */}
@@ -146,7 +239,7 @@ const Orders: React.FC = () => {
               onChange={(e) => setCompanyFilter(e.target.value)}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
             >
-              <option value="all">All Companies</option>
+              <option key="all" value="all">All Companies</option>
               {companies.map(company => (
                 <option key={company} value={company}>{company}</option>
               ))}
@@ -159,11 +252,11 @@ const Orders: React.FC = () => {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
             >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="processing">Processing</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
+              <option key="all" value="all">All Status</option>
+              <option key="pending" value="pending">Pending</option>
+              <option key="processing" value="processing">Processing</option>
+              <option key="completed" value="completed">Completed</option>
+              <option key="cancelled" value="cancelled">Cancelled</option>
             </select>
           </div>
 
@@ -185,19 +278,46 @@ const Orders: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Order Number
+                  PO Number
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Company
+                  Customer
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  Part Description
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Drawing No
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  PO Qty
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Balance Qty
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Price
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Total
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created Date
+                  FG Stock
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  WIP Stock
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Required Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Dispatch Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Invoice No
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -213,6 +333,39 @@ const Orders: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {order.company}
                   </td>
+                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                    {order.partDescription}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {order.drawingNo}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {order.poQty}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {order.balanceQty}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ₹{parseFloat(order.price).toFixed(2)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ₹{order.total.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {order.fgStock}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {order.wipStock}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {order.reqdDate}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {order.dispatchDate}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {order.invNo}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       order.status === 'completed'
@@ -226,20 +379,30 @@ const Orders: React.FC = () => {
                       {order.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ₹{order.total.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(order.createdDate).toLocaleDateString()}
-                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleViewOrder(order.id)}
-                      className="text-blue-900 hover:text-blue-800 p-1"
-                      title="View Order"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
+                    <div className="flex justify-end space-x-2">
+                      <button
+                        onClick={() => handleEditOrder(order)}
+                        className="text-blue-600 hover:text-blue-900 p-1"
+                        title="Edit Order"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteOrder(order.id, order.orderNumber)}
+                        className="text-red-600 hover:text-red-900 p-1"
+                        title="Delete Order"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleViewOrder(order.id)}
+                        className="text-blue-900 hover:text-blue-800 p-1"
+                        title="View Order"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -283,21 +446,46 @@ const Orders: React.FC = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-500">Order Number</label>
+                      <label className="block text-sm font-medium text-gray-500">PO Number</label>
                       <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedOrder.orderNumber}</p>
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Customer</label>
+                      <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedOrder.company}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Part Description</label>
+                      <p className="mt-1 text-sm text-gray-900">{selectedOrder.partDescription}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Drawing No</label>
+                      <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedOrder.drawingNo}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">PO Quantity</label>
+                      <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedOrder.poQty}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Balance Quantity</label>
+                      <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedOrder.balanceQty}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Unit Price</label>
+                      <p className="mt-1 text-sm text-gray-900 font-semibold">₹{parseFloat(selectedOrder.price).toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Total Amount</label>
                       <p className="mt-1 text-sm text-gray-900 font-semibold">₹{selectedOrder.total.toLocaleString()}</p>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500">Company</label>
-                    <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedOrder.company}</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Status</label>
                       <div className="mt-1">
@@ -314,31 +502,31 @@ const Orders: React.FC = () => {
                         </span>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">FG Stock</label>
+                      <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedOrder.fgStock}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">WIP Stock</label>
+                      <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedOrder.wipStock}</p>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Created Date</label>
                       <p className="mt-1 text-sm text-gray-900">{new Date(selectedOrder.createdDate).toLocaleDateString()}</p>
                     </div>
                   </div>
 
-                  <div className="mt-6 pt-4 border-t border-gray-200">
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-green-900 mb-2">Order Information</h4>
-                      <div className="space-y-2 text-sm text-green-800">
-                        <p><strong>Order ID:</strong> {selectedOrder.id}</p>
-                        <p><strong>Payment Status:</strong> {selectedOrder.status === 'completed' ? 'Paid' : selectedOrder.status === 'cancelled' ? 'Refunded' : 'Pending'}</p>
-                        <p><strong>Delivery Type:</strong> Standard</p>
-                        <p><strong>Expected Delivery:</strong> {new Date(new Date(selectedOrder.createdDate).getTime() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString()}</p>
-                      </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Required Date</label>
+                      <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedOrder.reqdDate}</p>
                     </div>
-                  </div>
-
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h4 className="text-sm font-medium text-blue-900 mb-2">Order Items</h4>
-                    <div className="space-y-2 text-sm text-blue-800">
-                      <div className="flex justify-between">
-                        <span>Product Items</span>
-                        <span className="font-semibold">{Math.floor(selectedOrder.total / 1000)} items</span>
-                      </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Dispatch Date</label>
+                      <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedOrder.dispatchDate}</p>
                       <div className="flex justify-between">
                         <span>Subtotal</span>
                         <span>₹{Math.floor(selectedOrder.total * 0.9).toLocaleString()}</span>
@@ -359,7 +547,7 @@ const Orders: React.FC = () => {
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-900 text-base font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 sm:ml-3 sm:w-auto sm:text-sm transition-colors"
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-900 text-base font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 sm:ml-3 sm:w-auto sm:text-sm"
                   onClick={handleCloseModal}
                 >
                   Close
@@ -368,6 +556,28 @@ const Orders: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Add Order Modal */}
+      {showAddModal && (
+        <AddOrderModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={handleAddSuccess}
+        />
+      )}
+
+      {/* Edit Order Modal */}
+      {showEditModal && selectedOrder && (
+        <EditOrderModal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false)
+            setSelectedOrder(null)
+          }}
+          onSuccess={handleEditSuccess}
+          order={selectedOrder}
+        />
       )}
     </div>
   )

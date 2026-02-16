@@ -7,7 +7,11 @@ export interface Customer {
   address: string
   contact_no: string
   gst_no: string
+  comp_code: string
+  comp_name: string
   is_active: boolean
+  parts_count: number
+  parts: any[]
   created_at: string
   updated_at: string
 }
@@ -17,7 +21,8 @@ export interface CreateCustomerRequest {
   address: string
   contact_no: string
   gst_no: string
-  is_active?: boolean
+  comp_code: string
+  comp_name: string
 }
 
 export interface UpdateCustomerRequest {
@@ -25,6 +30,8 @@ export interface UpdateCustomerRequest {
   address?: string
   contact_no?: string
   gst_no?: string
+  comp_code?: string
+  comp_name?: string
   is_active?: boolean
 }
 

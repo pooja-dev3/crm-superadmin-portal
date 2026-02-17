@@ -118,9 +118,7 @@ const Login: React.FC = () => {
             <div className="mx-auto w-20 h-20 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6 border border-white/20">
               <Shield className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-4xl font-bold text-white mb-2">
-              Welcome Back
-            </h1>
+
             <p className="text-blue-100 text-lg">
               Sign in to your Super Admin account
             </p>
@@ -169,7 +167,7 @@ const Login: React.FC = () => {
               {/* Password Field */}
               <div className="group">
                 <label htmlFor="password" className="block text-sm font-medium text-white mb-2">
-                  superadmin123
+                  Password
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -267,7 +265,7 @@ const Login: React.FC = () => {
                   </p>
                   <p className="flex items-center justify-center">
                     <Lock className="w-4 h-4 mr-2" />
-                    password
+                    superadmin123
                   </p>
                 </div>
               </div>

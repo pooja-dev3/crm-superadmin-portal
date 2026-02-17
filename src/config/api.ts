@@ -1,4 +1,4 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: 'https://erp.rslsolution.org/public/api' // Use direct backend URL
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.22:8000/api'
 }

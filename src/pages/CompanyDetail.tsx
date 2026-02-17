@@ -1,28 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Edit, Ban, CheckCircle, XCircle, Mail, Phone, MapPin, FileText, Calendar, Users, Package, FileText as DeliveryIcon, Settings } from 'lucide-react'
-import { companyApi, customerApi } from '../services'
-import { superadminApi } from '../services/superadminApi'
-import { deliveryChallanApi, type DeliveryChallan } from '../services/deliveryChallans'
-import { adminApi, type CreateAdminRequest } from '../services/admin'
-import { ordersApi } from '../services/orders'
-import { partApi } from '../services/parts'
+import { companyApi, customerApi, deliveryChallanApi, adminApi, ordersApi, partApi } from '../services'
 import type { Company } from '../services/companies'
-import type { Order, PartWithCustomer } from '../types/api'
+import type { Order, PartWithCustomer, DeliveryChallan } from '../types/api'
+import type { Admin } from '../services/admin'
+import type { Customer } from '../services/customers'
 import EditCompanyModal from '../components/EditCompanyModal'
-
-interface Customer {
-  id: number
-  name: string
-  email: string
-  phone: string
-  address: string
-  company_id: number
-  created_at: string
-}
-
-// Use the real Order type from types/api.ts
-// Use the real PartWithCustomer type from types/api.ts
 
 interface CompanyFormData {
   comp_name: string
@@ -46,8 +30,8 @@ const CompanyDetail: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([])
   const [deliveryChallans, setDeliveryChallans] = useState<DeliveryChallan[]>([])
   const [parts, setParts] = useState<PartWithCustomer[]>([])
-  const [supervisors, setSupervisors] = useState<CreateAdminRequest[]>([])
-  const [operators, setOperators] = useState<CreateAdminRequest[]>([])
+  const [supervisors, setSupervisors] = useState<Admin[]>([])
+  const [operators, setOperators] = useState<Admin[]>([])
   const [dataLoading, setDataLoading] = useState(false)
 
   useEffect(() => {
@@ -88,7 +72,7 @@ const CompanyDetail: React.FC = () => {
       ] = await Promise.all([
         customerApi.getAllCustomers(),
         ordersApi.getAllOrders(),
-        superadminApi.getDeliveryChallans() as unknown as { success: boolean; data: any },
+        deliveryChallanApi.getAllDeliveryChallans(),
         partApi.getAllParts(),
         adminApi.getAllAdmins()
       ])
@@ -98,8 +82,8 @@ const CompanyDetail: React.FC = () => {
         const customersData = Array.isArray(customersResponse.data) 
           ? customersResponse.data 
           : customersResponse.data?.data || []
-        const companyCustomers = customersData.filter((cust: any) => 
-          cust.comp_name === companyData.comp_name || cust.comp_name === companyData.comp_name
+        const companyCustomers = customersData.filter((cust: Customer) => 
+          cust.comp_name === companyData.comp_name
         )
         setCustomers(companyCustomers)
       }
@@ -108,7 +92,7 @@ const CompanyDetail: React.FC = () => {
         const ordersData = Array.isArray(ordersResponse.data) 
           ? ordersResponse.data 
           : ordersResponse.data?.data || []
-        const companyOrders = ordersData.filter((order: any) => 
+        const companyOrders = ordersData.filter((order: Order) => 
           order.customer?.comp_name === companyData.comp_name || 
           order.comp_name === companyData.comp_name
         )
@@ -119,10 +103,10 @@ const CompanyDetail: React.FC = () => {
         const challansData = Array.isArray(challansResponse.data)
           ? challansResponse.data
           : challansResponse.data?.data || []
-        const companyChallans = challansData.filter((challan: any) => 
+        const companyChallans = challansData.filter((challan: DeliveryChallan) => 
           challan.comp_name === companyData.comp_name || 
           challan.to === companyData.comp_name ||
-          challan.comp_name === companyData.comp_name
+          challan.company === companyData.comp_name
         )
         setDeliveryChallans(companyChallans)
       }
@@ -141,11 +125,13 @@ const CompanyDetail: React.FC = () => {
           : adminsResponse.data?.data || []
         
         // Filter by role and company
-        const companySupervisors = adminsData.filter((admin: any) => 
-          admin.company === companyData.comp_name && (admin.role === 'supervisor' || admin.role === 'manager')
+        const companySupervisors = adminsData.filter((admin: Admin) => 
+          admin.company_name === companyData.comp_name && 
+          (admin.role === 'supervisor' || admin.role === 'manager')
         )
-        const companyOperators = adminsData.filter((admin: any) => 
-          admin.company === companyData.comp_name && admin.role === 'operator'
+        const companyOperators = adminsData.filter((admin: Admin) => 
+          admin.company_name === companyData.comp_name && 
+          admin.role === 'operator'
         )
         
         setSupervisors(companySupervisors)
@@ -201,7 +187,7 @@ const CompanyDetail: React.FC = () => {
               <Phone className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
               <div>
                 <p className="text-sm font-medium text-gray-900">Phone</p>
-                <p className="text-sm text-gray-600">{company?.phone || ''}</p>
+                <p className="text-sm text-gray-600">{company?.phone || (company as any)?.phno || 'No phone provided'}</p>
               </div>
             </div>
 
@@ -345,7 +331,7 @@ const CompanyDetail: React.FC = () => {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Challan No</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">To</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Part No</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Part Description</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
             </tr>
@@ -353,15 +339,18 @@ const CompanyDetail: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {deliveryChallans.map((challan) => (
               <tr key={challan.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{challan.challanNumber}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{challan.company}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{challan.orderId}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{(challan as any).challan_no || challan.challanNumber}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(challan as any).to || (challan as any).comp_name || challan.company}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(challan.createdDate).toLocaleDateString()}
+                  {(challan as any).part_no || (challan as any).part?.part_description || (challan as any).partDescription || 'N/A'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {new Date((challan as any).challan_date || challan.createdDate).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                     challan.status === 'delivered' ? 'bg-green-100 text-green-800' : 
+                    challan.status === 'in_transit' ? 'bg-blue-100 text-blue-800' :
                     challan.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
                     'bg-gray-100 text-gray-800'
                   }`}>

@@ -33,6 +33,7 @@ const CompanyDetail: React.FC = () => {
   const [supervisors, setSupervisors] = useState<Admin[]>([])
   const [operators, setOperators] = useState<Admin[]>([])
   const [dataLoading, setDataLoading] = useState(false)
+  const [companyStatus, setCompanyStatus] = useState<boolean | undefined>(undefined)
 
   useEffect(() => {
     if (id) {
@@ -43,11 +44,24 @@ const CompanyDetail: React.FC = () => {
   const fetchCompany = async (companyId: string) => {
     try {
       const response = await companyApi.getCompanyById(parseInt(companyId))
+      console.log('Company API Response:', response)
       if (response.success) {
-        setCompany(response.data)
+        console.log('Company Data:', response.data)
+        // Handle both direct and nested company data structures
+        const companyData = (response.data as any)?.company || response.data
+        console.log('Processed Company Data:', companyData)
+        // Extract status from nested company object if available, otherwise use direct field
+        const companyStatus = companyData?.status === 'active' || companyData?.is_active === true
+        console.log('Company Status:', companyStatus)
+        console.log('Final Status Value:', companyStatus)
+        console.log('Company Status Type:', typeof companyStatus)
+        setCompany(companyData)
+        // Force a small delay to ensure state is set
+        await new Promise(resolve => setTimeout(resolve, 100))
         // Fetch additional data after company is loaded
-        await fetchCompanyData(response.data)
+        await fetchCompanyData(companyData)
       } else {
+        console.error('Company API Error:', response)
         setCompany(null)
       }
     } catch (error) {
@@ -93,7 +107,7 @@ const CompanyDetail: React.FC = () => {
           ? ordersResponse.data 
           : ordersResponse.data?.data || []
         const companyOrders = ordersData.filter((order: Order) => 
-          order.customer?.comp_name === companyData.comp_name || 
+          order.customer?.name === companyData.comp_name || 
           order.comp_name === companyData.comp_name
         )
         setOrders(companyOrders)
@@ -104,8 +118,8 @@ const CompanyDetail: React.FC = () => {
           ? challansResponse.data
           : challansResponse.data?.data || []
         const companyChallans = challansData.filter((challan: DeliveryChallan) => 
-          challan.comp_name === companyData.comp_name || 
-          challan.to === companyData.comp_name ||
+          (challan as any).comp_name === companyData.comp_name || 
+          (challan as any).to === companyData.comp_name ||
           challan.company === companyData.comp_name
         )
         setDeliveryChallans(companyChallans)
@@ -155,7 +169,11 @@ const CompanyDetail: React.FC = () => {
             <div>
               <h2 className="text-2xl font-bold text-white">{company?.comp_name || ''}</h2>
               <div className="flex items-center mt-2">
-                {company?.is_active ? (
+                {(() => {
+                  const status = (company as any)?.status === 'active' || company?.is_active === true;
+                  console.log('Render Status Check:', status, (company as any)?.status, company?.is_active);
+                  return status;
+                })() ? (
                   <span className="flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     <CheckCircle className="w-4 h-4 mr-1" />
                     Active
@@ -252,8 +270,8 @@ const CompanyDetail: React.FC = () => {
             {customers.map((customer) => (
               <tr key={customer.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{customer.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.email}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.phone}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.contact_no}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{customer.address}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{customer.address}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {new Date(customer.created_at).toLocaleDateString()}

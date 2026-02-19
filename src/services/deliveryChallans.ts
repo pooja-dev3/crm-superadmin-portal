@@ -55,7 +55,6 @@ export interface DeliveryChallan {
 
 export interface CreateDeliveryChallanRequest {
   challan_no: string
-  comp_name: string
   customer_id: number | null
   challan_date: string
   to: string

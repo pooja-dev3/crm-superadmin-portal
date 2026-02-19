@@ -288,6 +288,21 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                   <input
                     type="date"
                     id="po_date"
+                    name="po_date"
+                    value={formData.po_date || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="po_qty" className="block text-sm font-medium text-gray-700">
+                    PO Quantity *
+                  </label>
+                  <input
+                    type="number"
+                    id="po_qty"
+                    name="po_qty"
                     value={formData.po_qty || ''}
                     onChange={handleInputChange}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"

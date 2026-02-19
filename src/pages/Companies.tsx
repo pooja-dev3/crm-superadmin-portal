@@ -194,12 +194,13 @@ const Companies: React.FC = () => {
   const handleSubmitCompany = async (companyData: any) => {
     try {
       const response = await superadminApi.createCompany({
-        comp_name: companyData.company_name, // Map to API field name
+        comp_name: companyData.company_name || companyData.comp_name,
+        code: companyData.code || companyData.company_code,
         email: companyData.email,
         address: companyData.address,
-        phno: companyData.phone, // Map to API field name
-        gst: companyData.gst_no, // Map to API field name
-        status: companyData.is_active ? 'active' : 'inactive' // Map to API field name
+        phno: companyData.phone || companyData.phno,
+        gst_no: companyData.gst_no || companyData.gst,
+        status: companyData.is_active ? 'active' : 'inactive'
       }) as { success: boolean; data: any }
 
       if (response.success) {

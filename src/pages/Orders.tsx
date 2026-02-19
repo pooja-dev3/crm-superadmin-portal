@@ -31,10 +31,14 @@ const Orders: React.FC = () => {
         
         if (Array.isArray(response.data)) {
           // Real API returns simple array: { success: true, data: [...] }
-          ordersData = response.data
+          ordersData = response.data.sort((a: any, b: any) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
         } else if (response.data && Array.isArray(response.data.data)) {
           // Mock API returns paginated: { success: true, data: { data: [...] } }
-          ordersData = response.data.data
+          ordersData = response.data.data.sort((a: any, b: any) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
         }
         
         console.log('Orders Data after fetch:', ordersData) // Debug log
@@ -142,7 +146,10 @@ const Orders: React.FC = () => {
   }
 
   const handleAddOrder = () => {
+    console.log('Add Order button clicked') // Debug log
+    alert('Add Order button clicked!') // Simple test
     setShowAddModal(true)
+    console.log('showAddModal set to true') // Debug log
   }
 
   const handleEditOrder = (order: OrderDisplay) => {
@@ -203,12 +210,14 @@ const Orders: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Global Orders</h1>
           <p className="mt-1 text-sm text-gray-600">
-            View all orders across all companies in the system
+            View all orders across all companies in the system • Total: {orders.length}
           </p>
         </div>
         <button
           onClick={handleAddOrder}
           className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-900 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 transition-colors"
+          style={{ zIndex: 50, position: 'relative' }}
+          data-testid="add-order-button"
         >
           <Plus className="h-4 w-4 mr-2" />
           Add Order
@@ -559,6 +568,7 @@ const Orders: React.FC = () => {
       )}
 
       {/* Add Order Modal */}
+      {console.log('Rendering AddOrderModal, showAddModal:', showAddModal)}
       {showAddModal && (
         <AddOrderModal
           isOpen={showAddModal}

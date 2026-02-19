@@ -120,7 +120,7 @@ const Customers: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
             <p className="mt-1 text-sm text-gray-600">
-              Manage all customers in the system
+              Manage all customers in the system • Total: {customers.length}
             </p>
           </div>
           <button
@@ -234,8 +234,8 @@ const Customers: React.FC = () => {
             <p className="text-gray-500">No customers found matching your criteria.</p>
           </div>
         )}
-      </div>
-
+      
+      
       {/* Add Customer Modal */}
       {showAddModal && (
         <AddCustomerModal
@@ -254,6 +254,8 @@ const Customers: React.FC = () => {
           customer={selectedCustomer}
         />
       )}
+    
+      </div>
     </>
   )
 }

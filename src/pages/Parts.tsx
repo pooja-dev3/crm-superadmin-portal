@@ -55,10 +55,14 @@ const Parts: React.FC = () => {
         let partsData: PartWithCustomer[] = []
         if (Array.isArray(partsResponse.data)) {
           // Direct array response
-          partsData = partsResponse.data
+          partsData = partsResponse.data.sort((a: any, b: any) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
         } else if (partsResponse.data && typeof partsResponse.data === 'object' && 'data' in partsResponse.data && Array.isArray((partsResponse.data as any).data)) {
           // Paginated response
-          partsData = (partsResponse.data as any).data
+          partsData = (partsResponse.data as any).data.sort((a: any, b: any) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
         }
         setParts(partsData)
         setFilteredParts(partsData)
@@ -148,7 +152,7 @@ const Parts: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Parts</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Manage all parts and their specifications
+            Manage all parts and their specifications • Total: {parts.length}
           </p>
         </div>
         <button

@@ -5,6 +5,13 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    // Proxy disabled to avoid CORS issues
+    proxy: {
+      '/api': {
+        target: 'https://erp.rslsolution.org/public/api',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
   }
 })

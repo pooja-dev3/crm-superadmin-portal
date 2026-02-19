@@ -2,7 +2,7 @@
 import { API_CONFIG } from '../config/api'
 
 const API_BASE_URL = API_CONFIG.BASE_URL
-const MOCK_MODE = false // Disabled - using real API
+const MOCK_MODE = false // Disabled - using proxy for real API
 
 class ApiClient {
   private baseURL: string
@@ -93,9 +93,34 @@ class ApiClient {
         throw new Error(errorMessage)
       }
 
-      const responseData = await response.json()
-      console.log('API Success Response:', responseData)
-      return responseData
+      try {
+        // Check if response is HTML (error page) before parsing JSON
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('text/html')) {
+          const responseText = await response.text()
+          console.error('Server returned HTML instead of JSON:', responseText.substring(0, 200))
+          throw new Error(`Server returned HTML error page instead of JSON. Status: ${response.status}. This usually means the API endpoint doesn't exist or there's a server error.`)
+        }
+
+        const responseData = await response.json()
+        console.log('API Success Response:', responseData)
+        return responseData
+      } catch (error) {
+        console.error('API Request Failed:', error)
+        
+        if (error instanceof Error) {
+          // Check if it's a network error
+          if (error.message.includes('Failed to fetch')) {
+            if (endpoint.includes('192.168.1.22')) {
+              throw new Error('Unable to connect to API server. Please ensure the backend server is running on http://192.168.1.22:8000')
+            } else {
+              throw new Error('Network error: Unable to reach the API server')
+            }
+          }
+        }
+        
+        throw error
+      }
     } catch (error) {
       console.error('API Request Failed:', error)
       

@@ -18,7 +18,6 @@ interface DeliveryChallanErrors {
   total?: string
   notes?: string
   signature?: string
-  comp_name?: string
   customer_id?: string
 }
 
@@ -31,7 +30,6 @@ interface AddDeliveryChallanModalProps {
 const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState<CreateDeliveryChallanRequest>({
     challan_no: '',
-    comp_name: '',
     customer_id: null,
     challan_date: '',
     to: '',
@@ -91,6 +89,7 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
         
         setCompanies(companiesData)
         console.log('Companies loaded for dropdown:', companiesData.length, companiesData)
+        console.log('Sample company structure:', companiesData[0]) // Debug first company structure
       }
     } catch (error) {
       console.error('Error fetching companies:', error)
@@ -111,6 +110,7 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
         
         setParts(partsData)
         console.log('Parts loaded for dropdown:', partsData.length, partsData)
+        console.log('Sample part structure:', partsData[0]) // Debug first part structure
       }
     } catch (error) {
       console.error('Error fetching parts:', error)
@@ -157,22 +157,10 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
       processedValue = value === '' ? null : Number(value)
     }
     
-    // If company is selected, also set comp_name
-    if (name === 'to') {
-      const selectedCompany = companies.find(company => 
-        company.company_name === value || company.comp_name === value || company.name === value
-      )
-      setFormData(prev => ({
-        ...prev,
-        [name]: processedValue as string, // Ensure 'to' is always string
-        comp_name: selectedCompany?.company_name || selectedCompany?.comp_name || selectedCompany?.name || value
-      }))
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: processedValue
-      }))
-    }
+    setFormData(prev => ({
+      ...prev,
+      [name]: processedValue
+    }))
     
     // Clear error for this field when user starts typing
     if (errors[name as keyof DeliveryChallanErrors]) {
@@ -188,9 +176,6 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
     }
     if (!formData.to.trim()) {
       newErrors.to = 'Company/Recipient is required'
-    }
-    if (!formData.comp_name.trim()) {
-      newErrors.comp_name = 'Company name is required'
     }
     if (!formData.from.trim()) {
       newErrors.from = 'From location is required'
@@ -235,6 +220,13 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
       customer_id: formData.customer_id && formData.customer_id > 0 ? formData.customer_id : null
     }
     
+    // Debug: Show selected part and customer details
+    const selectedPart = parts.find(part => part.id === formData.part_id)
+    console.log('Selected Part:', selectedPart)
+    console.log('Selected Customer ID:', formData.customer_id)
+    console.log('Part Customer ID:', selectedPart?.customer_id)
+    console.log('Submit Data:', submitData)
+    
     setIsSubmitting(true)
     try {
       console.log('Submitting delivery challan data:', submitData)
@@ -252,7 +244,6 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
   const handleClose = () => {
     setFormData({
       challan_no: '',
-      comp_name: '',
       customer_id: null,
       challan_date: '',
       to: '',
@@ -339,9 +330,10 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                       disabled={isSubmitting}
                     >
                       <option value="">Select company</option>
+                      {console.log('Rendering companies dropdown:', companies.length, companies)}
                       {companies.map((company) => (
-                        <option key={company.id} value={company.company_name || company.comp_name || company.name}>
-                          {company.company_name || company.comp_name || company.name}
+                        <option key={company.id} value={company.name || company.company_name}>
+                          {company.name || company.company_name}
                         </option>
                       ))}
                     </select>
@@ -376,7 +368,9 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                     disabled={isSubmitting}
                   >
                     <option value="">Select part</option>
-                    {parts.map((part) => (
+                    {parts
+                      .filter(part => !formData.customer_id || part.customer_id === formData.customer_id)
+                      .map((part) => (
                       <option key={part.id} value={part.id}>
                         {part.part_no} - {part.part_description}
                       </option>

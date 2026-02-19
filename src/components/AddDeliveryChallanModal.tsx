@@ -330,7 +330,6 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                       disabled={isSubmitting}
                     >
                       <option value="">Select company</option>
-                      {console.log('Rendering companies dropdown:', companies.length, companies)}
                       {companies.map((company) => (
                         <option key={company.id} value={company.name || company.company_name}>
                           {company.name || company.company_name}

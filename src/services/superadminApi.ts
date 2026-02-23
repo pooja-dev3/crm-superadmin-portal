@@ -5,6 +5,7 @@ import { apiClient } from './api'
 export const superadminApi = {
   // Dashboard
   getDashboard: () => apiClient.get('/superadmin/dashboard'),
+  getRecentActivities: () => apiClient.get('/superadmin/recent-activities'),
 
   // Companies Management
   getCompanies: () => apiClient.get('/superadmin/companies'),

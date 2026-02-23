@@ -99,6 +99,7 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
   const fetchParts = async () => {
     try {
       const response = await superadminApi.getParts() as { success: boolean; data: any }
+      console.log('Parts API response:', response)
       if (response.success) {
         let partsData: any[] = []
         
@@ -111,6 +112,9 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
         setParts(partsData)
         console.log('Parts loaded for dropdown:', partsData.length, partsData)
         console.log('Sample part structure:', partsData[0]) // Debug first part structure
+        console.log('All parts customer_ids:', partsData.map(p => ({ id: p.id, customer_id: p.customer_id, name: p.part_description })))
+      } else {
+        console.log('Parts API failed:', response)
       }
     } catch (error) {
       console.error('Error fetching parts:', error)
@@ -131,6 +135,8 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
         
         setCustomers(customersData)
         console.log('Customers loaded for dropdown:', customersData.length, customersData)
+        console.log('Sample customer structure:', customersData[0]) // Debug first customer structure
+        console.log('Available companies:', customersData.map(c => ({ id: c.id, name: c.name, comp_name: c.comp_name }))) // Debug company relationships
       }
     } catch (error) {
       console.error('Error fetching customers:', error)
@@ -146,6 +152,26 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
     return date.toISOString().split('T')[0]
   }
 
+  const handleCompanyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { value } = e.target
+    
+    // When company changes, clear customer and part selections
+    setFormData(prev => ({
+      ...prev,
+      to: value,
+      customer_id: null,
+      part_id: null,
+      part_no: '',
+      part_description: '',
+      hsn_code: ''
+    }))
+    
+    // Clear error for this field when user starts typing
+    if (errors.to) {
+      setErrors(prev => ({ ...prev, to: '' }))
+    }
+  }
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
     let processedValue: string | number | null = value
@@ -155,6 +181,16 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
       processedValue = value === '' ? 0 : Number(value)
     } else if (name === 'customer_id') {
       processedValue = value === '' ? null : Number(value)
+      // When customer changes, clear part selection and reset part fields
+      setFormData(prev => ({
+        ...prev,
+        customer_id: processedValue as number | null,
+        part_id: null,
+        part_no: '',
+        part_description: '',
+        hsn_code: ''
+      }))
+      return
     }
     
     setFormData(prev => ({
@@ -295,44 +331,23 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="challan_no" className="block text-sm font-medium text-gray-700">
-                      Challan Number *
-                    </label>
-                    <input
-                      type="text"
-                      id="challan_no"
-                      name="challan_no"
-                      value={formData.challan_no}
-                      onChange={handleChange}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.challan_no ? 'border-red-300' : 'border-gray-300'
-                      }`}
-                      placeholder="Enter challan number"
-                      disabled={isSubmitting}
-                    />
-                    {errors.challan_no && (
-                      <p className="mt-1 text-sm text-red-600">{errors.challan_no}</p>
-                    )}
-                  </div>
-
-                  <div>
                     <label htmlFor="to" className="block text-sm font-medium text-gray-700">
-                      Company/Recipient *
+                      Company *
                     </label>
                     <select
                       id="to"
                       name="to"
                       value={formData.to}
-                      onChange={handleChange}
+                      onChange={handleCompanyChange}
                       className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
                         errors.to ? 'border-red-300' : 'border-gray-300'
                       }`}
                       disabled={isSubmitting}
                     >
-                      <option value="">Select company</option>
+                      <option value="">Select company first</option>
                       {companies.map((company) => (
-                        <option key={company.id} value={company.name || company.company_name}>
-                          {company.name || company.company_name}
+                        <option key={company.id} value={company.comp_name}>
+                          {company.comp_name}
                         </option>
                       ))}
                     </select>
@@ -340,11 +355,48 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                       <p className="mt-1 text-sm text-red-600">{errors.to}</p>
                     )}
                   </div>
+
+                  <div>
+                    <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
+                      Customer * {!formData.to && <span className="text-gray-400">(Select company first)</span>}
+                    </label>
+                    <select
+                      id="customer_id"
+                      name="customer_id"
+                      value={formData.customer_id?.toString() || ''}
+                      onChange={handleChange}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                        errors.customer_id ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      disabled={isSubmitting || !formData.to}
+                    >
+                      <option value="">{!formData.to ? 'Select company first' : 'Select customer'}</option>
+                      {customers
+                        .filter(customer => {
+                          const matchesCompany = !formData.to || customer.comp_name === formData.to
+                          if (!matchesCompany && formData.to) {
+                            console.log('Customer does not match company:', { customerName: customer.name, customerCompany: customer.comp_name, selectedCompany: formData.to })
+                          }
+                          return matchesCompany
+                        })
+                        .map((customer) => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.customer_id && (
+                      <p className="mt-1 text-sm text-red-600">{errors.customer_id}</p>
+                    )}
+                    {formData.to && customers.filter(customer => customer.comp_name === formData.to).length === 0 && (
+                      <p className="mt-1 text-sm text-yellow-600">No customers found for this company</p>
+                    )}
+                  </div>
                 </div>
 
                 <div>
                   <label htmlFor="part_id" className="block text-sm font-medium text-gray-700">
-                    Part *
+                    Part * {!formData.customer_id && <span className="text-gray-400">(Select customer first)</span>}
                   </label>
                   <select
                     id="part_id"
@@ -356,7 +408,7 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                       setFormData(prev => ({
                         ...prev,
                         part_id: selectedPartId,
-                        part_no: selectedPart?.part_no || '',
+                        part_no: selectedPart?.drawing_no || '', // Use drawing_no as part_no
                         part_description: selectedPart?.part_description || '',
                         hsn_code: selectedPart?.hsn_code || ''
                       }))
@@ -364,19 +416,34 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                     className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
                       errors.part_id ? 'border-red-300' : 'border-gray-300'
                     }`}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !formData.customer_id}
                   >
-                    <option value="">Select part</option>
+                    <option value="">{!formData.customer_id ? 'Select customer first' : 'Select part'}</option>
                     {parts
-                      .filter(part => !formData.customer_id || part.customer_id === formData.customer_id)
+                      .filter(part => {
+                        // If no customer selected, don't show any parts
+                        if (!formData.customer_id) return false
+                        
+                        // Try multiple possible customer_id field names
+                        const customerIdMatch = part.customer_id === formData.customer_id ||
+                                              part.customerId === formData.customer_id ||
+                                              part.customer === formData.customer_id
+                        
+                        console.log(`Part ${part.id}: customer_id=${part.customer_id}, customerId=${part.customerId}, customer=${part.customer}, selected=${formData.customer_id}, match=${customerIdMatch}`)
+                        
+                        return customerIdMatch
+                      })
                       .map((part) => (
                       <option key={part.id} value={part.id}>
-                        {part.part_no} - {part.part_description}
+                        {part.part_no || part.drawing_no} - {part.part_description}
                       </option>
                     ))}
                   </select>
                   {errors.part_id && (
                     <p className="mt-1 text-sm text-red-600">{errors.part_id}</p>
+                    )}
+                  {formData.customer_id && parts.filter(part => part.customer_id === formData.customer_id).length === 0 && (
+                    <p className="mt-1 text-sm text-yellow-600">No parts found for this customer</p>
                   )}
                 </div>
 
@@ -403,6 +470,27 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
+                    <label htmlFor="challan_no" className="block text-sm font-medium text-gray-700">
+                      Challan Number *
+                    </label>
+                    <input
+                      type="text"
+                      id="challan_no"
+                      name="challan_no"
+                      value={formData.challan_no}
+                      onChange={handleChange}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                        errors.challan_no ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter challan number"
+                      disabled={isSubmitting}
+                    />
+                    {errors.challan_no && (
+                      <p className="mt-1 text-sm text-red-600">{errors.challan_no}</p>
+                    )}
+                  </div>
+
+                  <div>
                     <label htmlFor="from" className="block text-sm font-medium text-gray-700">
                       From *
                     </label>
@@ -422,7 +510,9 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                       <p className="mt-1 text-sm text-red-600">{errors.from}</p>
                     )}
                   </div>
+                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="part_description" className="block text-sm font-medium text-gray-700">
                       Part Description *
@@ -441,34 +531,6 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                     />
                     {errors.part_description && (
                       <p className="mt-1 text-sm text-red-600">{errors.part_description}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
-                      Customer *
-                    </label>
-                    <select
-                      id="customer_id"
-                      name="customer_id"
-                      value={formData.customer_id?.toString() || ''}
-                      onChange={handleChange}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.customer_id ? 'border-red-300' : 'border-gray-300'
-                      }`}
-                      disabled={isSubmitting}
-                    >
-                      <option value="">Select customer</option>
-                      {customers.map((customer) => (
-                        <option key={customer.id} value={customer.id}>
-                          {customer.name}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.customer_id && (
-                      <p className="mt-1 text-sm text-red-600">{errors.customer_id}</p>
                     )}
                   </div>
 
@@ -546,15 +608,15 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                     value={formData.total}
                     onChange={handleChange}
                     className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.total ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                        errors.total ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="Enter total amount"
                     disabled={isSubmitting}
                   />
                   {errors.total && (
-                    <p className="mt-1 text-sm text-red-600">{errors.total}</p>
-                  )}
-                </div>
+                      <p className="mt-1 text-sm text-red-600">{errors.total}</p>
+                    )}
+                  </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>

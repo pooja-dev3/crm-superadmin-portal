@@ -4,12 +4,16 @@ import { superadminApi } from '../services/superadminApi'
 import AddDeliveryChallanModal from '../components/AddDeliveryChallanModal'
 import EditDeliveryChallanModal from '../components/EditDeliveryChallanModal'
 import ApiStatusIndicator from '../components/ApiStatusIndicator'
+import NotificationModal, { NotificationType } from '../components/NotificationModal'
 
 interface DeliveryChallanItem {
   id: string
   challanNumber: string
   company: string
   orderId: string
+  quantity?: number
+  inward?: string
+  remaining_quantity?: number
   status: 'pending' | 'in_transit' | 'delivered' | 'cancelled'
   createdDate: string
   deliveryDate?: string
@@ -28,11 +32,25 @@ const DeliveryChallans: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   
+  // Notification state
+  const [showNotification, setShowNotification] = useState(false)
+  const [notificationType, setNotificationType] = useState<NotificationType>('success')
+  const [notificationTitle, setNotificationTitle] = useState('')
+  const [notificationMessage, setNotificationMessage] = useState('')
+  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
   const [itemsPerPage] = useState(10)
+
+  // Helper function to show notifications
+  const showNotificationModal = (type: NotificationType, title: string, message: string) => {
+    setNotificationType(type)
+    setNotificationTitle(title)
+    setNotificationMessage(message)
+    setShowNotification(true)
+  }
 
   const fetchChallans = async (page: number = 1) => {
     setIsLoading(true)
@@ -207,6 +225,7 @@ const DeliveryChallans: React.FC = () => {
 
   const handleAddSuccess = () => {
     fetchChallans()
+    showNotificationModal('success', 'Success', 'Delivery challan created successfully!')
   }
 
   const handleEditChallan = (challan: DeliveryChallanItem) => {
@@ -221,6 +240,7 @@ const DeliveryChallans: React.FC = () => {
 
   const handleEditSuccess = () => {
     fetchChallans()
+    showNotificationModal('success', 'Success', 'Delivery challan updated successfully!')
   }
 
   const handleDeleteChallan = async (challanId: string, challanNumber: string) => {
@@ -228,14 +248,14 @@ const DeliveryChallans: React.FC = () => {
       try {
         const response = await superadminApi.deleteDeliveryChallan(parseInt(challanId)) as { success: boolean }
         if (response.success) {
-          alert('Delivery challan deleted successfully')
+          showNotificationModal('success', 'Success', 'Delivery challan deleted successfully!')
           fetchChallans()
         } else {
-          alert('Failed to delete delivery challan: ' + ((response as any).message || 'Unknown error'))
+          showNotificationModal('error', 'Error', 'Failed to delete delivery challan. Please try again.')
         }
       } catch (error) {
         console.error('Error deleting delivery challan:', error)
-        alert('Failed to delete delivery challan. Please try again.')
+        showNotificationModal('error', 'Error', 'An error occurred while deleting the delivery challan.')
       }
     }
   }
@@ -347,6 +367,15 @@ const DeliveryChallans: React.FC = () => {
                   Order ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Quantity
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Inward
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Remaining Quantity
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -371,6 +400,15 @@ const DeliveryChallans: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {challan.orderId}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {challan.quantity || '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {challan.inward || '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {challan.remaining_quantity || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -624,6 +662,15 @@ const DeliveryChallans: React.FC = () => {
           challan={selectedChallan}
         />
       )}
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={showNotification}
+        onClose={() => setShowNotification(false)}
+        type={notificationType}
+        title={notificationTitle}
+        message={notificationMessage}
+      />
     </div>
   )
 }

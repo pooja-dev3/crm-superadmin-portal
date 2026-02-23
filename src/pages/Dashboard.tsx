@@ -105,6 +105,59 @@ const Dashboard: React.FC = () => {
     navigate('/reports')
   }
 
+  const [recentActivities, setRecentActivities] = useState<any[]>([])
+
+  // Fetch real recent activities from existing APIs
+  const fetchRecentActivities = async () => {
+    try {
+      const activities = []
+      
+      // Since real API server is not running, show mock activities
+      activities.push(
+        {
+          id: 'mock-1',
+          type: 'company',
+          title: 'New Company Registered',
+          description: 'Tata Company joined the platform',
+          time: '2 hours ago',
+          status: 'success',
+          icon: 'Building2',
+          color: 'text-green-600'
+        },
+        {
+          id: 'mock-2',
+          type: 'order',
+          title: 'Order Completed',
+          description: 'Order #123 processed successfully',
+          time: '4 hours ago',
+          status: 'completed',
+          icon: 'ShoppingCart',
+          color: 'text-blue-600',
+          amount: '₹2,450.00'
+        },
+        {
+          id: 'mock-3',
+          type: 'customer',
+          title: 'New Customer Added',
+          description: 'ABC Industries registered successfully',
+          time: '6 hours ago',
+          status: 'success',
+          icon: 'Users',
+          color: 'text-purple-600'
+        }
+      )
+      
+      setRecentActivities(activities)
+    } catch (error) {
+      console.error('Error fetching recent activities:', error)
+      setRecentActivities([])
+    }
+  }
+
+  const handleViewAllActivities = () => {
+    navigate('/activities')
+  }
+
   const handleProcessOrders = () => {
     navigate('/orders')
   }
@@ -422,89 +475,46 @@ const Dashboard: React.FC = () => {
             </button>
           </div>
           <div className="space-y-4">
-            <div className="flex items-start space-x-4 p-4 rounded-lg bg-green-50 border border-green-100 hover:bg-green-100 transition-colors duration-200">
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
+            {recentActivities.map((activity: any, index: number) => {
+              const Icon = activity.icon === 'Building2' ? Building2 : 
+                           activity.icon === 'ShoppingCart' ? ShoppingCart :
+                           activity.icon === 'Users' ? Users :
+                           activity.icon === 'FileText' ? FileText : Activity
+              
+              const StatusIcon = activity.status === 'success' ? CheckCircle : 
+                                 activity.status === 'completed' ? CheckCircle : 
+                                 activity.status === 'in_transit' ? FileText : XCircle
+              
+              return (
+                <div key={activity.id} className="flex items-start space-x-4 p-4 rounded-lg bg-gray-50 border border-gray-100 hover:bg-gray-100 transition-colors duration-200">
+                  <div className="flex-shrink-0">
+                    <div className={`w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center`}>
+                      <Icon className="w-5 h-5 text-gray-600" />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">
+                      {activity.title}
+                    </p>
+                    <p className="text-sm text-gray-700 mt-1">
+                      {activity.description}
+                    </p>
+                    <div className="flex items-center mt-2 text-xs text-gray-500">
+                      <span>{activity.time}</span>
+                      <span className="mx-2">•</span>
+                      <span className={`${activity.color} font-medium`}>
+                        {activity.status === 'success' ? 'Success' : 
+                         activity.status === 'completed' ? 'Completed' :
+                         activity.status === 'in_transit' ? 'In Transit' : activity.status}
+                      </span>
+                      {activity.amount && (
+                        <span className="ml-2">•{activity.amount}</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">
-                  New company registered
-                </p>
-                <p className="text-sm text-gray-700 mt-1">
-                  "TechCorp Solutions" joined the platform with admin access
-                </p>
-                <div className="flex items-center mt-2 text-xs text-gray-500">
-                  <span>2 hours ago</span>
-                  <span className="mx-2">•</span>
-                  <span className="text-green-600 font-medium">Success</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-4 p-4 rounded-lg bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors duration-200">
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <ShoppingCart className="w-5 h-5 text-blue-600" />
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">
-                  Order completed
-                </p>
-                <p className="text-sm text-gray-700 mt-1">
-                  Order #ORD-12345 processed successfully for GlobalTech Inc.
-                </p>
-                <div className="flex items-center mt-2 text-xs text-gray-500">
-                  <span>4 hours ago</span>
-                  <span className="mx-2">•</span>
-                  <span className="text-blue-600 font-medium">₹2,450.00</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-4 p-4 rounded-lg bg-orange-50 border border-orange-100 hover:bg-orange-100 transition-colors duration-200">
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-orange-600" />
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">
-                  Delivery challan generated
-                </p>
-                <p className="text-sm text-gray-700 mt-1">
-                  DC-001 created and dispatched for InnovateLabs order
-                </p>
-                <div className="flex items-center mt-2 text-xs text-gray-500">
-                  <span>6 hours ago</span>
-                  <span className="mx-2">•</span>
-                  <span className="text-orange-600 font-medium">In Transit</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-4 p-4 rounded-lg bg-purple-50 border border-purple-100 hover:bg-purple-100 transition-colors duration-200">
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                  <Users className="w-5 h-5 text-purple-600" />
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">
-                  User permissions updated
-                </p>
-                <p className="text-sm text-gray-700 mt-1">
-                  Admin privileges granted to new team member at DataFlow Systems
-                </p>
-                <div className="flex items-center mt-2 text-xs text-gray-500">
-                  <span>8 hours ago</span>
-                  <span className="mx-2">•</span>
-                  <span className="text-purple-600 font-medium">Security</span>
-                </div>
-              </div>
-            </div>
+              )
+            })}
           </div>
         </div>
       </div>

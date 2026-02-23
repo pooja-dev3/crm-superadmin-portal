@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { superadminApi } from '../services/superadminApi'
-import { customerApi, partApi } from '../services'
+import { customerApi, partApi, companyApi } from '../services'
 import type { DeliveryChallan, UpdateDeliveryChallanRequest } from '../services/deliveryChallans'
 import type { ApiResponse } from '../types/api'
 
@@ -77,7 +77,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
 
   const fetchCompanies = async () => {
     try {
-      const response = await customerApi.getAllCustomers()
+      const response = await companyApi.getAllCompanies()
       if (response.success) {
         let companiesData: any[] = []
         
@@ -122,15 +122,51 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
         
         setCustomers(customersData)
         console.log('Customers loaded for dropdown:', customersData.length, customersData)
+        console.log('Sample customer structure:', customersData[0]) // Debug first customer structure
+        console.log('Available companies:', customersData.map(c => ({ id: c.id, name: c.name, comp_name: c.comp_name }))) // Debug company relationships
       }
     } catch (error) {
       console.error('Error fetching customers:', error)
     }
   }
 
+  const handleCompanyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { value } = e.target
+    
+    // When company changes, clear customer and part selections
+    setFormData(prev => ({
+      ...prev,
+      to: value,
+      customer_id: null,
+      part_id: null,
+      part_no: '',
+      part_description: '',
+      hsn_code: ''
+    }))
+    
+    // Clear error for this field when user starts typing
+    if (errors.to) {
+      setErrors(prev => ({ ...prev, to: '' }))
+    }
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    
+    if (name === 'customer_id') {
+      const processedValue = value === '' ? null : Number(value)
+      // When customer changes, clear part selection and reset part fields
+      setFormData(prev => ({
+        ...prev,
+        customer_id: processedValue as number | null,
+        part_id: null,
+        part_no: '',
+        part_description: '',
+        hsn_code: ''
+      }))
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }))
+    }
     
     // Clear error when user starts typing
     if (errors[name as keyof UpdateDeliveryChallanRequest]) {
@@ -305,44 +341,23 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="challan_no" className="block text-sm font-medium text-gray-700">
-                      Challan Number *
-                    </label>
-                    <input
-                      type="text"
-                      id="challan_no"
-                      name="challan_no"
-                      value={formData.challan_no}
-                      onChange={handleInputChange}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.challan_no ? 'border-red-300' : 'border-gray-300'
-                      }`}
-                      placeholder="Enter challan number"
-                      disabled={isSubmitting}
-                    />
-                    {errors.challan_no && (
-                      <p className="mt-1 text-sm text-red-600">{errors.challan_no}</p>
-                    )}
-                  </div>
-
-                  <div>
                     <label htmlFor="to" className="block text-sm font-medium text-gray-700">
-                      Company/Recipient *
+                      Company *
                     </label>
                     <select
                       id="to"
                       name="to"
                       value={formData.to}
-                      onChange={handleInputChange}
+                      onChange={handleCompanyChange}
                       className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
                         errors.to ? 'border-red-300' : 'border-gray-300'
                       }`}
                       disabled={isSubmitting}
                     >
-                      <option value="">Select company</option>
+                      <option value="">Select company first</option>
                       {companies.map((company) => (
-                        <option key={company.id} value={company.company_name || company.comp_name || company.name}>
-                          {company.company_name || company.comp_name || company.name}
+                        <option key={company.id} value={company.comp_name}>
+                          {company.comp_name}
                         </option>
                       ))}
                     </select>
@@ -350,11 +365,48 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                       <p className="mt-1 text-sm text-red-600">{errors.to}</p>
                     )}
                   </div>
+
+                  <div>
+                    <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
+                      Customer * {!formData.to && <span className="text-gray-400">(Select company first)</span>}
+                    </label>
+                    <select
+                      id="customer_id"
+                      name="customer_id"
+                      value={formData.customer_id?.toString() || ''}
+                      onChange={handleInputChange}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                        errors.customer_id ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      disabled={isSubmitting || !formData.to}
+                    >
+                      <option value="">{!formData.to ? 'Select company first' : 'Select customer'}</option>
+                      {customers
+                        .filter(customer => {
+                          const matchesCompany = !formData.to || customer.comp_name === formData.to
+                          if (!matchesCompany && formData.to) {
+                            console.log('Customer does not match company:', { customerName: customer.name, customerCompany: customer.comp_name, selectedCompany: formData.to })
+                          }
+                          return matchesCompany
+                        })
+                        .map((customer) => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.customer_id && (
+                      <p className="mt-1 text-sm text-red-600">{errors.customer_id}</p>
+                    )}
+                    {formData.to && customers.filter(customer => customer.comp_name === formData.to).length === 0 && (
+                      <p className="mt-1 text-sm text-yellow-600">No customers found for this company</p>
+                    )}
+                  </div>
                 </div>
 
                 <div>
                   <label htmlFor="part_id" className="block text-sm font-medium text-gray-700">
-                    Part *
+                    Part * {!formData.customer_id && <span className="text-gray-400">(Select customer first)</span>}
                   </label>
                   <select
                     id="part_id"
@@ -366,7 +418,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                       setFormData(prev => ({
                         ...prev,
                         part_id: selectedPartId,
-                        part_no: selectedPart?.part_no || '',
+                        part_no: selectedPart?.drawing_no || '', // Use drawing_no as part_no
                         part_description: selectedPart?.part_description || '',
                         hsn_code: selectedPart?.hsn_code || ''
                       }))
@@ -374,10 +426,12 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                     className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
                       errors.part_id ? 'border-red-300' : 'border-gray-300'
                     }`}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !formData.customer_id}
                   >
-                    <option value="">Select part</option>
-                    {parts.map((part) => (
+                    <option value="">{!formData.customer_id ? 'Select customer first' : 'Select part'}</option>
+                    {parts
+                      .filter(part => formData.customer_id && part.customer_id === formData.customer_id)
+                      .map((part) => (
                       <option key={part.id} value={part.id}>
                         {part.part_no} - {part.part_description}
                       </option>
@@ -385,6 +439,9 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                   </select>
                   {errors.part_id && (
                     <p className="mt-1 text-sm text-red-600">{errors.part_id}</p>
+                  )}
+                  {formData.customer_id && parts.filter(part => part.customer_id === formData.customer_id).length === 0 && (
+                    <p className="mt-1 text-sm text-yellow-600">No parts found for this customer</p>
                   )}
                 </div>
 
@@ -411,6 +468,27 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
+                    <label htmlFor="challan_no" className="block text-sm font-medium text-gray-700">
+                      Challan Number *
+                    </label>
+                    <input
+                      type="text"
+                      id="challan_no"
+                      name="challan_no"
+                      value={formData.challan_no}
+                      onChange={handleInputChange}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                        errors.challan_no ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter challan number"
+                      disabled={isSubmitting}
+                    />
+                    {errors.challan_no && (
+                      <p className="mt-1 text-sm text-red-600">{errors.challan_no}</p>
+                    )}
+                  </div>
+
+                  <div>
                     <label htmlFor="from" className="block text-sm font-medium text-gray-700">
                       From *
                     </label>
@@ -430,7 +508,9 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                       <p className="mt-1 text-sm text-red-600">{errors.from}</p>
                     )}
                   </div>
+                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="part_description" className="block text-sm font-medium text-gray-700">
                       Part Description *
@@ -449,34 +529,6 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                     />
                     {errors.part_description && (
                       <p className="mt-1 text-sm text-red-600">{errors.part_description}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
-                      Customer *
-                    </label>
-                    <select
-                      id="customer_id"
-                      name="customer_id"
-                      value={formData.customer_id?.toString() || ''}
-                      onChange={handleInputChange}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.customer_id ? 'border-red-300' : 'border-gray-300'
-                      }`}
-                      disabled={isSubmitting}
-                    >
-                      <option value="">Select customer</option>
-                      {customers.map((customer) => (
-                        <option key={customer.id} value={customer.id}>
-                          {customer.name}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.customer_id && (
-                      <p className="mt-1 text-sm text-red-600">{errors.customer_id}</p>
                     )}
                   </div>
 

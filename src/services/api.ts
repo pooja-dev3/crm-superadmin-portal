@@ -2,7 +2,7 @@
 import { API_CONFIG } from '../config/api'
 
 const API_BASE_URL = API_CONFIG.BASE_URL
-const MOCK_MODE = false // Disabled - using proxy for real API
+const MOCK_MODE = false // Disabled - using real API exclusively
 
 class ApiClient {
   private baseURL: string
@@ -172,6 +172,92 @@ class ApiClient {
             message: 'Logout successful'
           }
           resolve(mockLogoutResponse as T)
+        } else if (endpoint === '/companies') {
+          const mockCompaniesResponse = {
+            success: true,
+            data: [
+              {
+                id: 1,
+                comp_name: 'ABC Manufacturing Ltd',
+                name: 'ABC Manufacturing',
+                email: 'info@abcmanufacturing.com',
+                phone: '+1-555-0123',
+                address: '123 Industrial Ave, Mumbai, Maharashtra 400001',
+                gst_no: '27AAAPL1234C1ZV',
+                status: 'active',
+                created_at: '2024-01-15T10:00:00Z',
+                updated_at: '2024-01-15T10:00:00Z'
+              },
+              {
+                id: 2,
+                comp_name: 'XYZ Components Pvt Ltd',
+                name: 'XYZ Components',
+                email: 'contact@xyzcomponents.com',
+                phone: '+1-555-0124',
+                address: '456 Tech Park, Pune, Maharashtra 411045',
+                gst_no: '27AABCS5678D2EF',
+                status: 'active',
+                created_at: '2024-01-20T14:30:00Z',
+                updated_at: '2024-01-20T14:30:00Z'
+              },
+              {
+                id: 3,
+                comp_name: 'Tech Solutions India',
+                name: 'Tech Solutions',
+                email: 'support@techsolutions.in',
+                phone: '+1-555-0125',
+                address: '789 Software Park, Bengaluru, Karnataka 560001',
+                gst_no: '29AABCT9012E3GH',
+                status: 'inactive',
+                created_at: '2024-02-01T09:15:00Z',
+                updated_at: '2024-02-01T09:15:00Z'
+              }
+            ]
+          }
+          resolve(mockCompaniesResponse as T)
+        } else if (endpoint === '/customers') {
+          const mockCustomersResponse = {
+            success: true,
+            data: [
+              {
+                id: 1,
+                name: 'ABC Industries Pvt Ltd',
+                comp_name: 'ABC Manufacturing Ltd',
+                email: 'purchase@abcindustries.com',
+                phone: '+1-555-0126',
+                address: '321 Customer St, Delhi, Delhi 110001',
+                gst_no: '07AABCI3456F4IJ',
+                status: 'active',
+                created_at: '2024-01-10T11:00:00Z',
+                updated_at: '2024-01-10T11:00:00Z'
+              },
+              {
+                id: 2,
+                name: 'Global Engineering Corp',
+                comp_name: 'Global Engineering',
+                email: 'orders@globaleng.com',
+                phone: '+1-555-0127',
+                address: '654 Engineering Blvd, Chennai, Tamil Nadu 600001',
+                gst_no: '33AABCG7890H5KL',
+                status: 'active',
+                created_at: '2024-01-25T16:45:00Z',
+                updated_at: '2024-01-25T16:45:00Z'
+              },
+              {
+                id: 3,
+                name: 'Precision Parts Ltd',
+                comp_name: 'Precision Parts',
+                email: 'info@precisionparts.com',
+                phone: '+1-555-0128',
+                address: '987 Precision Way, Hyderabad, Telangana 500001',
+                gst_no: '36AABCP1234J6MN',
+                status: 'active',
+                created_at: '2024-02-05T13:20:00Z',
+                updated_at: '2024-02-05T13:20:00Z'
+              }
+            ]
+          }
+          resolve(mockCustomersResponse as T)
         } else {
           // Generic mock response for other endpoints
           resolve({ success: true, data: [] } as T)

@@ -84,13 +84,13 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
         
         // Try multiple possible company field names to filter customers
         const companyCustomers = customersData.filter(customer => {
-          // Check various possible company field names
+          // Try multiple possible company field names due to inconsistent API
           const customerCompany = 
-            customer.company_name || 
-            customer.company || 
-            customer.comp_name || 
-            customer.companyId ||
-            customer.company_id ||
+            (customer as any).company_name || 
+            (customer as any).company || 
+            (customer as any).comp_name || 
+            (customer as any).companyId ||
+            (customer as any).company_id ||
             customer.name === companyName // Fallback: check if customer name matches company name
           
           console.log(`Customer ${customer.id}: name=${customer.name}, company_field=${customerCompany}, selected_company=${companyName}`)
@@ -134,14 +134,14 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
         
         console.log('Raw parts response data:', partsResponse.data)
         console.log('Is partsResponse.data an array?', Array.isArray(partsResponse.data))
-        console.log('Does partsResponse.data.data exist?', partsResponse.data?.data)
-        console.log('Is partsResponse.data.data an array?', Array.isArray(partsResponse.data?.data))
+        console.log('Does partsResponse.data.data exist?', (partsResponse.data as any)?.data)
+        console.log('Is partsResponse.data.data an array?', Array.isArray((partsResponse.data as any)?.data))
         
         if (Array.isArray(partsResponse.data)) {
           partsData = partsResponse.data
           console.log('Using partsResponse.data directly')
-        } else if (partsResponse.data && Array.isArray(partsResponse.data.data)) {
-          partsData = partsResponse.data.data
+        } else if (partsResponse.data && Array.isArray((partsResponse.data as any).data)) {
+          partsData = (partsResponse.data as any).data
           console.log('Using partsResponse.data.data')
         } else {
           console.log('No valid parts array found in response')
@@ -381,15 +381,9 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                     disabled={!formData.customer_id}
                   >
                     <option value="">{!formData.customer_id ? 'Select customer first' : 'Select a part'}</option>
-                    {/* Debug: Log parts state */}
-                    {console.log('=== DEBUG: Parts dropdown rendering ===')}
-                    {console.log('Parts array:', parts)}
-                    {console.log('Parts length:', parts.length)}
-                    {console.log('Customer selected:', formData.customer_id)}
-                    {console.log('Dropdown disabled:', !formData.customer_id)}
                     {parts.map(part => (
                       <option key={part.id} value={part.id}>
-                        {part.part_description}
+                        {part.drawing_no || (part as any).part_no || `Part-${part.id}`}: {part.part_description}
                       </option>
                     ))}
                   </select>

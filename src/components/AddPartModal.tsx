@@ -75,11 +75,11 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
         // Try multiple possible company field names to filter customers
         const companyCustomers = customersData.filter(customer => {
           const customerCompany = 
-            customer.company_name || 
-            customer.company || 
-            customer.comp_name || 
-            customer.companyId ||
-            customer.company_id ||
+            (customer as any).company_name || 
+            (customer as any).company || 
+            (customer as any).comp_name || 
+            (customer as any).companyId ||
+            (customer as any).company_id ||
             customer.name === companyName // Fallback: check if customer name matches company name
           
           console.log(`Customer ${customer.id}: name=${customer.name}, company_field=${customerCompany}, selected_company=${companyName}`)

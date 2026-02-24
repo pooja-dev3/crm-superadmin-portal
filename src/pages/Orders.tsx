@@ -225,19 +225,24 @@ const Orders: React.FC = () => {
         
         if (ordersData.length > 0) {
           const validOrders: OrderDisplay[] = ordersData.map((order: Order) => ({
-            id: order.id,
+            id: order.id.toString(),
             orderNumber: order.po_no || `ORD-${order.id}`,
             company: order.customer?.name || 'Unknown Company',
-            status: order.po_received ? 'Received' : 'Pending',
+            status: order.po_received ? 'completed' : 'pending',
             createdDate: order.created_at ? order.created_at.split('T')[0] : '',
             quantity: order.po_qty || 0,
             balance: order.balance_qty || 0,
-            price: order.price || 0,
+            price: order.price?.toString() || '0',
             partDescription: order.part?.part_description || 'Unknown Part',
             drawingNo: order.part?.drawing_no || '',
             reqdDate: order.reqd_date_as_per_po ? order.reqd_date_as_per_po.split('T')[0] : '',
             dispatchDate: order.dispatch_details_inv_date ? order.dispatch_details_inv_date.split('T')[0] : '',
             invNo: order.dispatch_details_inv_no || '',
+            total: Number(order.price) * (order.po_qty || 0),
+            poQty: order.po_qty || 0,
+            balanceQty: order.balance_qty || 0,
+            fgStock: 0, // Default value since not available in Order type
+            wipStock: 0, // Default value since not available in Order type
             originalOrder: order
           }))
           

@@ -30,9 +30,9 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
     wip_stock: 0,
     comp_name: ''
   })
+  const [companies, setCompanies] = useState<Company[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [parts, setParts] = useState<PartWithCustomer[]>([])
-  const [companies, setCompanies] = useState<Company[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Partial<CreateOrderRequest>>({})
 
@@ -44,36 +44,141 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
 
   const fetchData = async () => {
     try {
-      const [customersResponse, partsResponse, companiesResponse] = await Promise.all([
-        customerApi.getAllCustomers(),
-        partApi.getAllParts(),
-        companyApi.getAllCompanies()
-      ])
-
-      // Handle customers response
-      if (customersResponse.success) {
-        if (Array.isArray(customersResponse.data)) {
-          setCustomers(customersResponse.data)
-        } else if (customersResponse.data && Array.isArray(customersResponse.data.data)) {
-          setCustomers(customersResponse.data.data)
-        }
-      }
-
-      // Handle parts response - parts API returns ApiResponse<PartWithCustomer[]>
-      if (partsResponse.success && Array.isArray(partsResponse.data)) {
-        setParts(partsResponse.data)
-      }
-
-      // Handle companies response
+      // First fetch all companies
+      const companiesResponse = await companyApi.getAllCompanies()
+      
       if (companiesResponse.success) {
+        let companiesData: Company[] = []
+        
         if (Array.isArray(companiesResponse.data)) {
-          setCompanies(companiesResponse.data)
+          companiesData = companiesResponse.data
         } else if (companiesResponse.data && Array.isArray(companiesResponse.data.data)) {
-          setCompanies(companiesResponse.data.data)
+          companiesData = companiesResponse.data.data
         }
+        
+        setCompanies(companiesData)
+        console.log('Companies loaded:', companiesData)
       }
     } catch (error) {
-      console.error('Error fetching data:', error)
+      console.error('Error fetching companies:', error)
+    }
+  }
+
+  const fetchCustomersForCompany = async (companyName: string) => {
+    try {
+      // Fetch customers (this should ideally be filtered by company, but using all customers for now)
+      const customersResponse = await customerApi.getAllCustomers()
+      
+      if (customersResponse.success) {
+        let customersData: Customer[] = []
+        
+        if (Array.isArray(customersResponse.data)) {
+          customersData = customersResponse.data
+        } else if (customersResponse.data && Array.isArray(customersResponse.data.data)) {
+          customersData = customersResponse.data.data
+        }
+        
+        // Debug: Log the raw customer response to understand the data structure
+        console.log('Raw customers API response:', customersResponse)
+        console.log('Customer response data structure:', customersResponse.data)
+        
+        // Try multiple possible company field names to filter customers
+        const companyCustomers = customersData.filter(customer => {
+          // Check various possible company field names
+          const customerCompany = 
+            customer.company_name || 
+            customer.company || 
+            customer.comp_name || 
+            customer.companyId ||
+            customer.company_id ||
+            customer.name === companyName // Fallback: check if customer name matches company name
+          
+          console.log(`Customer ${customer.id}: name=${customer.name}, company_field=${customerCompany}, selected_company=${companyName}`)
+          
+          return customerCompany === companyName || !customerCompany // Show if matches or no company field
+        })
+        
+        console.log('All customers data:', customersData)
+        console.log('Selected company:', companyName)
+        console.log('Sample customer structure:', customersData[0])
+        console.log('Customers to show:', companyCustomers)
+        console.log('Filtered customers count:', companyCustomers.length, 'of', customersData.length)
+        
+        setCustomers(companyCustomers)
+        console.log('Customers loaded for company:', companyName, companyCustomers)
+        
+        // Reset customer and part selections when company changes
+        setFormData(prev => ({ ...prev, customer_id: 0, part_id: 0 }))
+        setParts([])
+      }
+    } catch (error) {
+      console.error('Error fetching customers:', error)
+      setCustomers([])
+      setParts([])
+    }
+  }
+
+  const fetchPartsForCustomer = async (customerId: number) => {
+    try {
+      console.log('=== DEBUG: fetchPartsForCustomer called ===')
+      console.log('Customer ID:', customerId)
+      
+      // Fetch parts (this should ideally be filtered by customer, but using all parts for now)
+      const partsResponse = await partApi.getAllParts()
+      
+      console.log('Parts API response:', partsResponse)
+      console.log('Parts response success:', partsResponse.success)
+      
+      if (partsResponse.success) {
+        let partsData: PartWithCustomer[] = []
+        
+        console.log('Raw parts response data:', partsResponse.data)
+        console.log('Is partsResponse.data an array?', Array.isArray(partsResponse.data))
+        console.log('Does partsResponse.data.data exist?', partsResponse.data?.data)
+        console.log('Is partsResponse.data.data an array?', Array.isArray(partsResponse.data?.data))
+        
+        if (Array.isArray(partsResponse.data)) {
+          partsData = partsResponse.data
+          console.log('Using partsResponse.data directly')
+        } else if (partsResponse.data && Array.isArray(partsResponse.data.data)) {
+          partsData = partsResponse.data.data
+          console.log('Using partsResponse.data.data')
+        } else {
+          console.log('No valid parts array found in response')
+        }
+        
+        console.log('Final partsData:', partsData)
+        console.log('PartsData length:', partsData.length)
+        
+        if (partsData.length > 0) {
+          console.log('Sample part structure:', partsData[0])
+          console.log('All part customer_ids:', partsData.map(p => ({ id: p.id, customer_id: p.customer_id })))
+        }
+        
+        // Filter parts by selected customer - only show parts that belong to this customer
+        const customerParts = partsData.filter(part => 
+          part.customer_id === customerId
+        )
+        
+        console.log('All parts data:', partsData)
+        console.log('Selected customer ID:', customerId)
+        console.log('Parts to show:', customerParts)
+        console.log('Parts with customer_id:', partsData.filter(p => p.customer_id))
+        console.log('Parts matching customer ID:', customerParts.length, 'of', partsData.length)
+        
+        setParts(customerParts)
+        console.log('Parts state set to:', customerParts)
+        console.log('Parts loaded for customer:', customerId, customerParts)
+        
+        // Reset part selection when customer changes
+        setFormData(prev => ({ ...prev, part_id: 0 }))
+      } else {
+        console.log('Parts API call failed:', partsResponse.message)
+        setParts([])
+      }
+    } catch (error) {
+      console.error('Error fetching parts:', error)
+      setParts([])
     }
   }
 
@@ -152,11 +257,12 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
           comp_name: ''
         })
       } else {
-        alert('Failed to create order: ' + (response.message || 'Unknown error'))
+        console.error('Failed to create order:', response.message || 'Unknown error')
+        // TODO: Show proper error notification instead of alert
       }
     } catch (error) {
       console.error('Error creating order:', error)
-      alert('Failed to create order. Please try again.')
+      // TODO: Show proper error notification instead of alert
     } finally {
       setIsSubmitting(false)
     }
@@ -191,54 +297,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
-                    Customer *
-                  </label>
-                  <select
-                    id="customer_id"
-                    name="customer_id"
-                    value={formData.customer_id || ''}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
-                  >
-                    <option value="">Select a customer</option>
-                    {customers.map(customer => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.customer_id && (
-                    <p className="mt-1 text-sm text-red-600">{errors.customer_id}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="part_id" className="block text-sm font-medium text-gray-700">
-                    Part *
-                  </label>
-                  <select
-                    id="part_id"
-                    name="part_id"
-                    value={formData.part_id || ''}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
-                  >
-                    <option value="">Select a part</option>
-                    {parts.map(part => (
-                      <option key={part.id} value={part.id}>
-                        {part.part_description}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.part_id && (
-                    <p className="mt-1 text-sm text-red-600">{errors.part_id}</p>
-                  )}
-                </div>
-              </div>
-
+              {/* Step 1: Company Selection */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="company" className="block text-sm font-medium text-gray-700">
@@ -246,9 +305,13 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                   </label>
                   <select
                     id="company"
-                    name="company"
+                    name="comp_name"
                     value={formData.comp_name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, comp_name: e.target.value }))}
+                    onChange={(e) => {
+                      const companyName = e.target.value
+                      setFormData(prev => ({ ...prev, comp_name: companyName, customer_id: 0, part_id: 0 }))
+                      fetchCustomersForCompany(companyName)
+                    }}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
                   >
                     <option value="">Select a company</option>
@@ -263,6 +326,84 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                   )}
                 </div>
 
+                <div>
+                  {/* Empty div for grid layout */}
+                </div>
+              </div>
+
+              {/* Step 2: Customer Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
+                    Customer * {!formData.comp_name && <span className="text-gray-400">(Select company first)</span>}
+                  </label>
+                  <select
+                    id="customer_id"
+                    name="customer_id"
+                    value={formData.customer_id || ''}
+                    onChange={(e) => {
+                      const customerId = Number(e.target.value)
+                      setFormData(prev => ({ ...prev, customer_id: customerId, part_id: 0 }))
+                      fetchPartsForCustomer(customerId)
+                    }}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    disabled={!formData.comp_name}
+                  >
+                    <option value="">{!formData.comp_name ? 'Select company first' : 'Select a customer'}</option>
+                    {customers.map(customer => (
+                      <option key={customer.id} value={customer.id}>
+                        {customer.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.customer_id && (
+                    <p className="mt-1 text-sm text-red-600">{errors.customer_id}</p>
+                  )}
+                </div>
+
+                <div>
+                  {/* Empty div for grid layout */}
+                </div>
+              </div>
+
+              {/* Step 3: Part Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="part_id" className="block text-sm font-medium text-gray-700">
+                    Part * {!formData.customer_id && <span className="text-gray-400">(Select customer first)</span>}
+                  </label>
+                  <select
+                    id="part_id"
+                    name="part_id"
+                    value={formData.part_id || ''}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    disabled={!formData.customer_id}
+                  >
+                    <option value="">{!formData.customer_id ? 'Select customer first' : 'Select a part'}</option>
+                    {/* Debug: Log parts state */}
+                    {console.log('=== DEBUG: Parts dropdown rendering ===')}
+                    {console.log('Parts array:', parts)}
+                    {console.log('Parts length:', parts.length)}
+                    {console.log('Customer selected:', formData.customer_id)}
+                    {console.log('Dropdown disabled:', !formData.customer_id)}
+                    {parts.map(part => (
+                      <option key={part.id} value={part.id}>
+                        {part.part_description}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.part_id && (
+                    <p className="mt-1 text-sm text-red-600">{errors.part_id}</p>
+                  )}
+                </div>
+
+                <div>
+                  {/* Empty div for grid layout */}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="po_no" className="block text-sm font-medium text-gray-700">
                     PO Number *

@@ -154,6 +154,37 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
               </div>
               
               <div className="space-y-4">
+                {/* Step 1: Company Selection */}
+                <div>
+                  <label htmlFor="company" className="block text-sm font-medium text-gray-700">
+                    Company *
+                  </label>
+                  <select
+                    id="company"
+                    name="company"
+                    value={formData.comp_name}
+                    onChange={handleCompanyChange}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                      errors.comp_name ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Select a company</option>
+                    {companies.length > 0 ? (
+                      companies.map(company => (
+                        <option key={company.id} value={company.comp_name}>
+                          {company.comp_name}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="" disabled>No companies available</option>
+                    )}
+                  </select>
+                  {errors.comp_name && (
+                    <p className="mt-1 text-sm text-red-600">{errors.comp_name}</p>
+                  )}
+                </div>
+
+                {/* Step 2: Customer Name */}
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                     Customer Name *
@@ -231,35 +262,6 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
                   />
                   {errors.gst_no && (
                     <p className="mt-1 text-sm text-red-600">{errors.gst_no}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="company" className="block text-sm font-medium text-gray-700">
-                    Company *
-                  </label>
-                  <select
-                    id="company"
-                    name="company"
-                    value={formData.comp_name}
-                    onChange={handleCompanyChange}
-                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.comp_name ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                  >
-                    <option value="">Select a company</option>
-                    {companies.length > 0 ? (
-                      companies.map(company => (
-                        <option key={company.id} value={company.comp_name}>
-                          {company.comp_name}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="" disabled>No companies available</option>
-                    )}
-                  </select>
-                  {errors.comp_name && (
-                    <p className="mt-1 text-sm text-red-600">{errors.comp_name}</p>
                   )}
                 </div>
 

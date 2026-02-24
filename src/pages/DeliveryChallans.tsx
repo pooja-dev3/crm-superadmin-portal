@@ -43,6 +43,7 @@ const DeliveryChallans: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
   const [itemsPerPage] = useState(10)
+  const [isBackendPaginated, setIsBackendPaginated] = useState(false)
 
   // Helper function to show notifications
   const showNotificationModal = (type: NotificationType, title: string, message: string) => {
@@ -118,6 +119,7 @@ const DeliveryChallans: React.FC = () => {
           setCurrentPage(response.pagination.current_page)
           setTotalPages(response.pagination.last_page)
           setTotalItems(response.pagination.total)
+          setIsBackendPaginated(true)
         } else {
           // Calculate pagination locally
           const total = challansData.length
@@ -125,6 +127,7 @@ const DeliveryChallans: React.FC = () => {
           setCurrentPage(page)
           setTotalPages(lastPage)
           setTotalItems(total)
+          setIsBackendPaginated(false)
         }
         
         // Extract unique companies
@@ -157,21 +160,29 @@ const DeliveryChallans: React.FC = () => {
 
   // Get paginated data for current page
   const getPaginatedData = () => {
-    // If we have backend pagination data, use it directly
-    if (totalItems > 0 && totalPages > 1) {
-      return filteredChallans // Backend already paginated, return as-is
+    if (isBackendPaginated) {
+      // Backend pagination - return data as-is (already paginated)
+      return filteredChallans
+    } else {
+      // Local pagination - slice the filtered data
+      const startIndex = (currentPage - 1) * itemsPerPage
+      const endIndex = startIndex + itemsPerPage
+      return filteredChallans.slice(startIndex, endIndex)
     }
-    // Otherwise, apply local pagination
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    return filteredChallans.slice(startIndex, endIndex)
   }
 
   // Handle page change
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page)
-      fetchChallans(page) // Fetch new page data from backend
+      
+      if (isBackendPaginated) {
+        // Backend pagination - fetch new page data from API
+        fetchChallans(page)
+      } else {
+        // Local pagination - just update the page state
+        // Data will be filtered and sliced by getPaginatedData()
+      }
     }
   }
 
@@ -483,9 +494,9 @@ const DeliveryChallans: React.FC = () => {
                 <p className="text-sm text-gray-700">
                   Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
                   <span className="font-medium">
-                    {Math.min(currentPage * itemsPerPage, filteredChallans.length)}
+                    {isBackendPaginated ? Math.min(currentPage * itemsPerPage, totalItems) : Math.min(currentPage * itemsPerPage, filteredChallans.length)}
                   </span>{' '}
-                  of <span className="font-medium">{filteredChallans.length}</span> results
+                  of <span className="font-medium">{isBackendPaginated ? totalItems : filteredChallans.length}</span> results
                 </p>
               </div>
               <div>

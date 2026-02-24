@@ -41,7 +41,6 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
   useEffect(() => {
     if (isOpen) {
-      fetchCustomers()
       fetchCompanies()
     }
   }, [isOpen])
@@ -59,30 +58,41 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
     }
   }
 
-  const fetchCustomers = async () => {
+  const fetchCustomersForCompany = async (companyName: string) => {
     setIsLoadingCustomers(true)
     try {
-      console.log('Fetching customers for parts modal...')
       const response = await customerApi.getAllCustomers()
-      console.log('Customers API response:', response)
-      // Handle both real API and mock API response structures
+      
       if (response.success) {
+        let customersData: Customer[] = []
+        
         if (Array.isArray(response.data)) {
-          // Real API returns simple array: { success: true, data: [...] }
-          console.log('Setting customers from direct array:', response.data)
-          console.log('First customer object:', response.data[0])
-          setCustomers(response.data)
+          customersData = response.data
         } else if (response.data && Array.isArray(response.data.data)) {
-          // Mock API returns paginated: { success: true, data: { data: [...] } }
-          console.log('Setting customers from paginated data:', response.data.data)
-          console.log('First customer object:', response.data.data[0])
-          setCustomers(response.data.data)
-        } else {
-          console.log('No customers data found in response')
-          setCustomers([])
+          customersData = response.data.data
         }
+        
+        // Try multiple possible company field names to filter customers
+        const companyCustomers = customersData.filter(customer => {
+          const customerCompany = 
+            customer.company_name || 
+            customer.company || 
+            customer.comp_name || 
+            customer.companyId ||
+            customer.company_id ||
+            customer.name === companyName // Fallback: check if customer name matches company name
+          
+          console.log(`Customer ${customer.id}: name=${customer.name}, company_field=${customerCompany}, selected_company=${companyName}`)
+          
+          return customerCompany === companyName || !customerCompany // Show if matches or no company field
+        })
+        
+        console.log('Customers loaded for company:', companyName, companyCustomers)
+        setCustomers(companyCustomers)
+        
+        // Reset customer selection when company changes
+        setFormData(prev => ({ ...prev, customer_id: 0 }))
       } else {
-        console.log('Customers API response not successful')
         setCustomers([])
       }
     } catch (error) {
@@ -116,7 +126,9 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
   }
 
   const handleCompanyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFormData(prev => ({ ...prev, comp_name: e.target.value }))
+    const companyName = e.target.value
+    setFormData(prev => ({ ...prev, comp_name: companyName, customer_id: 0 }))
+    fetchCustomersForCompany(companyName)
     // Clear error when user selects a company
     if (errors.comp_name) {
       setErrors(prev => ({ ...prev, comp_name: undefined }))
@@ -218,35 +230,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
-                    Customer *
-                  </label>
-                  <select
-                    id="customer_id"
-                    name="customer_id"
-                    value={formData.customer_id || ''}
-                    onChange={handleInputChange}
-                    disabled={isLoadingCustomers}
-                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.customer_id ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                  >
-                    <option value="">Select a customer</option>
-                    {customers.map(customer => {
-                      console.log('Rendering customer option:', customer.id, customer.name)
-                      return (
-                        <option key={customer.id} value={customer.id}>
-                          {customer.name}
-                        </option>
-                      )
-                    })}
-                  </select>
-                  {errors.customer_id && (
-                    <p className="mt-1 text-sm text-red-600">{errors.customer_id}</p>
-                  )}
-                </div>
-
+                {/* Step 1: Company Selection */}
                 <div>
                   <label htmlFor="company" className="block text-sm font-medium text-gray-700">
                     Company *
@@ -272,6 +256,48 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
                   )}
                 </div>
 
+                <div>
+                  {/* Empty div for grid layout */}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Step 2: Customer Selection */}
+                <div>
+                  <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
+                    Customer * {!formData.comp_name && <span className="text-gray-400">(Select company first)</span>}
+                  </label>
+                  <select
+                    id="customer_id"
+                    name="customer_id"
+                    value={formData.customer_id || ''}
+                    onChange={handleInputChange}
+                    disabled={isLoadingCustomers || !formData.comp_name}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                      errors.customer_id ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">{!formData.comp_name ? 'Select company first' : 'Select a customer'}</option>
+                    {customers.map(customer => {
+                      console.log('Rendering customer option:', customer.id, customer.name)
+                      return (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </option>
+                      )
+                    })}
+                  </select>
+                  {errors.customer_id && (
+                    <p className="mt-1 text-sm text-red-600">{errors.customer_id}</p>
+                  )}
+                </div>
+
+                <div>
+                  {/* Empty div for grid layout */}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="part_description" className="block text-sm font-medium text-gray-700">
                     Part Description *

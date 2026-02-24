@@ -19,6 +19,13 @@ const Orders: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [itemsPerPage] = useState(10)
+  const [isBackendPaginated, setIsBackendPaginated] = useState(false)
+
   const fetchOrders = async () => {
     setIsLoading(true)
     try {
@@ -74,6 +81,22 @@ const Orders: React.FC = () => {
           setOrders(validOrders)
           setFilteredOrders(validOrders)
           
+          // Handle pagination from backend if available, otherwise calculate locally
+          if (response.data && response.data.pagination) {
+            setCurrentPage(response.data.pagination.current_page)
+            setTotalPages(response.data.pagination.last_page)
+            setTotalItems(response.data.pagination.total)
+            setIsBackendPaginated(true)
+          } else {
+            // Calculate pagination locally
+            const total = validOrders.length
+            const lastPage = Math.ceil(total / itemsPerPage)
+            setCurrentPage(1)
+            setTotalPages(lastPage)
+            setTotalItems(total)
+            setIsBackendPaginated(false)
+          }
+          
           // Extract unique companies with null check
           const uniqueCompanies = Array.from(new Set(
             ordersData
@@ -86,18 +109,30 @@ const Orders: React.FC = () => {
           setOrders([])
           setFilteredOrders([])
           setCompanies([])
+          setCurrentPage(1)
+          setTotalPages(1)
+          setTotalItems(0)
+          setIsBackendPaginated(false)
         }
       } else {
         console.log('Invalid response structure:', response)
         setOrders([])
         setFilteredOrders([])
         setCompanies([])
+        setCurrentPage(1)
+        setTotalPages(1)
+        setTotalItems(0)
+        setIsBackendPaginated(false)
       }
     } catch (error) {
       console.error('Error fetching orders:', error)
       setOrders([])
       setFilteredOrders([])
       setCompanies([])
+      setCurrentPage(1)
+      setTotalPages(1)
+      setTotalItems(0)
+      setIsBackendPaginated(false)
     } finally {
       setIsLoading(false)
     }
@@ -135,7 +170,94 @@ const Orders: React.FC = () => {
     }
 
     setFilteredOrders(filtered)
+    
+    // Reset to first page when filters change
+    setCurrentPage(1)
   }, [orders, searchTerm, companyFilter, statusFilter, dateFilter])
+
+  // Get paginated data for current page
+  const getPaginatedData = () => {
+    if (isBackendPaginated) {
+      // Backend pagination - return data as-is (already paginated)
+      return filteredOrders
+    } else {
+      // Local pagination - slice the filtered data
+      const startIndex = (currentPage - 1) * itemsPerPage
+      const endIndex = startIndex + itemsPerPage
+      return filteredOrders.slice(startIndex, endIndex)
+    }
+  }
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+      
+      if (isBackendPaginated) {
+        // Backend pagination - fetch new page data from API
+        fetchOrdersWithPage(page)
+      } else {
+        // Local pagination - just update the page state
+        // Data will be filtered and sliced by getPaginatedData()
+      }
+    }
+  }
+
+  // Fetch orders with page parameter for backend pagination
+  const fetchOrdersWithPage = async (page: number = 1) => {
+    setIsLoading(true)
+    try {
+      const response = await superadminApi.getOrders() as { success: boolean; data: any }
+      console.log('Orders API Response (page fetch):', response)
+      
+      if (response.success) {
+        let ordersData: Order[] = []
+        
+        if (Array.isArray(response.data)) {
+          ordersData = response.data.sort((a: any, b: any) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
+        } else if (response.data && Array.isArray(response.data.data)) {
+          ordersData = response.data.data.sort((a: any, b: any) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
+        }
+        
+        if (ordersData.length > 0) {
+          const validOrders: OrderDisplay[] = ordersData.map((order: Order) => ({
+            id: order.id,
+            orderNumber: order.po_no || `ORD-${order.id}`,
+            company: order.customer?.name || 'Unknown Company',
+            status: order.po_received ? 'Received' : 'Pending',
+            createdDate: order.created_at ? order.created_at.split('T')[0] : '',
+            quantity: order.po_qty || 0,
+            balance: order.balance_qty || 0,
+            price: order.price || 0,
+            partDescription: order.part?.part_description || 'Unknown Part',
+            drawingNo: order.part?.drawing_no || '',
+            reqdDate: order.reqd_date_as_per_po ? order.reqd_date_as_per_po.split('T')[0] : '',
+            dispatchDate: order.dispatch_details_inv_date ? order.dispatch_details_inv_date.split('T')[0] : '',
+            invNo: order.dispatch_details_inv_no || '',
+            originalOrder: order
+          }))
+          
+          setOrders(validOrders)
+          setFilteredOrders(validOrders)
+          
+          // Update pagination state
+          if (response.data && response.data.pagination) {
+            setCurrentPage(response.data.pagination.current_page)
+            setTotalPages(response.data.pagination.last_page)
+            setTotalItems(response.data.pagination.total)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching orders page:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleViewOrder = (orderId: string) => {
     const order = orders.find(o => o.id === orderId)
@@ -147,7 +269,7 @@ const Orders: React.FC = () => {
 
   const handleAddOrder = () => {
     console.log('Add Order button clicked') // Debug log
-    alert('Add Order button clicked!') // Simple test
+    // alert('Add Order button clicked!') // Simple test
     setShowAddModal(true)
     console.log('showAddModal set to true') // Debug log
   }
@@ -248,7 +370,7 @@ const Orders: React.FC = () => {
               onChange={(e) => setCompanyFilter(e.target.value)}
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
             >
-              <option key="all" value="all">All Companies</option>
+              <option key="all" value="all">All customers</option>
               {companies.map(company => (
                 <option key={company} value={company}>{company}</option>
               ))}
@@ -334,7 +456,7 @@ const Orders: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredOrders.map((order) => (
+              {getPaginatedData().map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {order.orderNumber}
@@ -418,6 +540,85 @@ const Orders: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div className="flex-1 flex justify-between sm:hidden">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                  <span className="font-medium">
+                    {isBackendPaginated ? Math.min(currentPage * itemsPerPage, totalItems) : Math.min(currentPage * itemsPerPage, filteredOrders.length)}
+                  </span>{' '}
+                  of <span className="font-medium">{isBackendPaginated ? totalItems : filteredOrders.length}</span> results
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="sr-only">Previous</span>
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                  
+                  {/* Page numbers */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        currentPage === page
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="sr-only">Next</span>
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {getPaginatedData().length === 0 && filteredOrders.length > 0 && (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No orders found on this page.</p>
+          </div>
+        )}
 
         {filteredOrders.length === 0 && (
           <div className="text-center py-12">

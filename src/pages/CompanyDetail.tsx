@@ -127,10 +127,107 @@ const CompanyDetail: React.FC = () => {
 
       if (partsResponse.success && partsResponse.data) {
         const partsData = Array.isArray(partsResponse.data) ? partsResponse.data : []
-        const companyParts = partsData.filter((part: PartWithCustomer) => 
-          part.customer?.name === companyData.comp_name
-        )
+        console.log('=== DEBUG: Parts Filtering ===')
+        console.log('All parts data:', partsData)
+        console.log('Parts data length:', partsData.length)
+        console.log('Company name:', companyData.comp_name)
+        
+        if (partsData.length > 0) {
+          console.log('Sample part structure:', partsData[0])
+          console.log('All part customer relationships:', partsData.map(p => ({
+            id: p.id,
+            customer: p.customer,
+            customer_name: p.customer?.name,
+            comp_name: (p as any).comp_name,
+            company_name: (p as any).company_name,
+            company: (p as any).company,
+            customer_id: (p as any).customer_id
+          })))
+        }
+        
+        // Try multiple possible company/customer relationship fields
+        let companyParts = partsData.filter((part: PartWithCustomer) => {
+          console.log(`Checking part ${part.id}:`)
+          console.log(`  - part.customer?.name: ${part.customer?.name}`)
+          console.log(`  - (part as any).comp_name: ${(part as any).comp_name}`)
+          console.log(`  - (part as any).company_name: ${(part as any).company_name}`)
+          console.log(`  - (part as any).company: ${(part as any).company}`)
+          console.log(`  - (part as any).customer_id: ${(part as any).customer_id}`)
+          console.log(`  - Target company: ${companyData.comp_name}`)
+          
+          // Check if part has customer relationship
+          if (part.customer) {
+            const customerMatch = part.customer.name === companyData.comp_name
+            console.log(`  - Customer match: ${customerMatch}`)
+            if (customerMatch) return true
+          }
+          
+          // Check if part has direct company fields
+          const directMatch = (
+            (part as any).comp_name === companyData.comp_name ||
+            (part as any).company_name === companyData.comp_name ||
+            (part as any).company === companyData.comp_name
+          )
+          console.log(`  - Direct match: ${directMatch}`)
+          if (directMatch) return true
+          
+          return false
+        })
+        
+        console.log('Filtered parts for company:', companyParts)
+        console.log('Filtered parts count:', companyParts.length)
+        
+        // If no parts found with strict filtering, try more flexible approaches
+        if (companyParts.length === 0 && partsData.length > 0) {
+          console.log('=== TRYING FLEXIBLE FILTERING ===')
+          
+          // Try case-insensitive matching
+          companyParts = partsData.filter((part: PartWithCustomer) => {
+            const targetCompany = companyData.comp_name.toLowerCase()
+            
+            // Case-insensitive customer name match
+            if (part.customer && part.customer.name.toLowerCase() === targetCompany) {
+              console.log(`Case-insensitive customer match for part ${part.id}`)
+              return true
+            }
+            
+            // Case-insensitive direct company field match
+            if (
+              ((part as any).comp_name || '').toLowerCase() === targetCompany ||
+              ((part as any).company_name || '').toLowerCase() === targetCompany ||
+              ((part as any).company || '').toLowerCase() === targetCompany
+            ) {
+              console.log(`Case-insensitive direct match for part ${part.id}`)
+              return true
+            }
+            
+            // Partial match (company name contains part's company or vice versa)
+            if (part.customer) {
+              const customerName = part.customer.name.toLowerCase()
+              if (customerName.includes(targetCompany) || targetCompany.includes(customerName)) {
+                console.log(`Partial customer match for part ${part.id}`)
+                return true
+              }
+            }
+            
+            return false
+          })
+          
+          console.log('Flexible filtered parts count:', companyParts.length)
+        }
+        
+        // If still no parts found, show all parts as fallback with warning
+        if (companyParts.length === 0 && partsData.length > 0) {
+          console.log('=== FALLBACK: Showing all parts ===')
+          console.log('Warning: Could not filter parts by company, showing all parts')
+          companyParts = partsData
+        }
+        
+        console.log('Final parts count:', companyParts.length)
         setParts(companyParts)
+      } else {
+        console.log('Parts API response failed or no data')
+        console.log('Parts response:', partsResponse)
       }
 
       if (adminsResponse.success) {
@@ -138,15 +235,34 @@ const CompanyDetail: React.FC = () => {
           ? adminsResponse.data 
           : adminsResponse.data?.data || []
         
-        // Filter by role and company
-        const companySupervisors = adminsData.filter((admin: Admin) => 
-          admin.company_name === companyData.comp_name && 
-          (admin.role === 'supervisor' || admin.role === 'manager')
-        )
-        const companyOperators = adminsData.filter((admin: Admin) => 
-          admin.company_name === companyData.comp_name && 
-          admin.role === 'operator'
-        )
+        console.log('All admins data:', adminsData)
+        console.log('Company name:', companyData.comp_name)
+        
+        // Try multiple possible company fields for admins
+        const companySupervisors = adminsData.filter((admin: Admin) => {
+          const adminCompany = 
+            admin.company_name ||
+            (admin as any).comp_name ||
+            (admin as any).company ||
+            (admin as any).assigned_company
+          
+          return adminCompany === companyData.comp_name && 
+            (admin.role === 'supervisor' || admin.role === 'manager')
+        })
+        
+        const companyOperators = adminsData.filter((admin: Admin) => {
+          const adminCompany = 
+            admin.company_name ||
+            (admin as any).comp_name ||
+            (admin as any).company ||
+            (admin as any).assigned_company
+          
+          return adminCompany === companyData.comp_name && 
+            admin.role === 'operator'
+        })
+        
+        console.log('Filtered supervisors:', companySupervisors)
+        console.log('Filtered operators:', companyOperators)
         
         setSupervisors(companySupervisors)
         setOperators(companyOperators)

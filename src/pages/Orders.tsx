@@ -739,7 +739,7 @@ const Orders: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Balance Quantity</label>
-                      <p className="mt-1 text-sm text-gray-900 font-semibold">{(selectedOrder.po_qty || 0) - (selectedOrder.dispatch_details_inv_qlt || 0)}</p>
+                      <p className="mt-1 text-sm text-gray-900 font-semibold">{(selectedOrder.poQty || 0) - (selectedOrder.dispatch_details_inv_qlt || 0)}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Unit Price</label>
@@ -750,7 +750,7 @@ const Orders: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Total Amount</label>
-                      <p className="mt-1 text-sm text-gray-900 font-semibold">₹{parseFloat(selectedOrder.price).toFixed(2)}</p>
+                      <p className="mt-1 text-sm text-gray-900 font-semibold">₹{parseFloat(selectedOrder.total).toFixed(2)}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Status</label>
@@ -781,11 +781,11 @@ const Orders: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Created Date</label>
-                      <p className="mt-1 text-sm text-gray-900">{new Date(selectedOrder.createdDate).toLocaleDateString()}</p>
+                      <p className="mt-1 text-sm text-gray-900">{new Date(selectedOrder.createdDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Required Date</label>
                       <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedOrder.reqdDate}</p>
@@ -793,17 +793,27 @@ const Orders: React.FC = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Dispatch Date</label>
                       <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedOrder.dispatchDate}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Invoice No</label>
+                      <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedOrder.invNo || 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-medium text-gray-900 mb-3">Price Breakdown</h4>
+                    <div className="space-y-2">
                       <div className="flex justify-between">
-                        <span>Subtotal</span>
-                        <span>₹{Math.floor(selectedOrder.total * 0.9).toLocaleString()}</span>
+                        <span className="text-sm text-gray-600">Subtotal (90%)</span>
+                        <span className="text-sm font-semibold">₹{(selectedOrder.total * 0.9).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Tax (10%)</span>
-                        <span>₹{Math.floor(selectedOrder.total * 0.1).toLocaleString()}</span>
+                        <span className="text-sm text-gray-600">Tax (10%)</span>
+                        <span className="text-sm font-semibold">₹{(selectedOrder.total * 0.1).toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between font-bold border-t pt-2">
-                        <span>Total</span>
-                        <span>₹{selectedOrder.total.toLocaleString()}</span>
+                      <div className="flex justify-between font-bold text-base border-t pt-2">
+                        <span>Total Amount</span>
+                        <span>₹{selectedOrder.total.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>

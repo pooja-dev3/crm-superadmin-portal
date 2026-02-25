@@ -293,7 +293,30 @@ class ApiClient {
   }
 
   async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' })
+    console.log('API DELETE request to:', endpoint)
+    const url = `${this.baseURL}${endpoint}`
+    console.log('Full DELETE URL:', url)
+    
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        ...this.defaultHeaders,
+        ...this.getAuthHeaders(),
+      },
+    })
+    
+    console.log('DELETE Response status:', response.status)
+    console.log('DELETE Response ok:', response.ok)
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('DELETE Error response:', errorText)
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
+    }
+    
+    const result = await response.json()
+    console.log('DELETE Success response:', result)
+    return result
   }
 }
 

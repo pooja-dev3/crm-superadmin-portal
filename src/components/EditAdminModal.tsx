@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
-import { X } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { X, Eye, EyeOff } from 'lucide-react'
 import { adminApi, type Admin, type UpdateAdminRequest } from '../services/admin'
 import { superadminApi } from '../services/superadminApi'
 import type { ApiResponse } from '../types/api'
+import { useToast } from '../contexts/ToastContext'
 
 interface EditAdminModalProps {
   isOpen: boolean
@@ -23,8 +24,10 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
   const [companies, setCompanies] = useState<any[]>([])
   const [selectedCompany, setSelectedCompany] = useState<any>(null)
   const [newPassword, setNewPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const { addToast } = useToast()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -125,8 +128,8 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
 
     // New password validation (optional)
     if (newPassword) {
-      if (newPassword.length < 8) {
-        newErrors.newPassword = 'Password must be at least 8 characters'
+      if (newPassword.length < 6) {
+        newErrors.newPassword = 'Password must be at least 6 characters'
       } else if (newPassword.length > 128) {
         newErrors.newPassword = 'Password must be less than 128 characters'
       } else if (!/(?=.*[a-z])/.test(newPassword)) {
@@ -175,11 +178,14 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
         if (newPassword) {
           await superadminApi.updateCompanyUser(admin.id, { password: newPassword })
         }
+        addToast('Admin updated successfully', 'success')
         onSuccess()
+      } else {
+        addToast('Failed to update admin', 'error')
       }
     } catch (error) {
       console.error('Error updating admin:', error)
-      alert('Failed to update admin')
+      addToast('Failed to update admin', 'error')
     } finally {
       setIsLoading(false)
     }
@@ -224,7 +230,7 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Name *
+                  Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -243,7 +249,7 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Email *
+                  Email <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -262,7 +268,7 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Phone *
+                  Phone <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
@@ -281,7 +287,7 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Company
+                  Company <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={selectedCompany?.id || ''}
@@ -311,7 +317,7 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Role *
+                  Role <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="role"
@@ -356,17 +362,30 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
                   <label className="block text-sm font-medium text-gray-700">
                     New Password (leave empty to keep current)
                   </label>
-                  <input
-                    type="password"
-                    name="newPassword"
-                    value={newPassword}
-                    onChange={handlePasswordChange}
-                    placeholder="Enter new password"
-                    className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.newPassword ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    disabled={isLoading}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      name="newPassword"
+                      value={newPassword}
+                      onChange={handlePasswordChange}
+                      placeholder="Enter new password"
+                      className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 pr-10 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                        errors.newPassword ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
+                    >
+                      {showNewPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                   {errors.newPassword && (
                     <p className="mt-1 text-sm text-red-600">{errors.newPassword}</p>
                   )}

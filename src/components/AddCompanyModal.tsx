@@ -99,7 +99,7 @@ const AddCompanyModal: React.FC<AddCompanyModalProps> = ({ isOpen, onClose, onSu
     if (!formData.gst_no.trim()) {
       newErrors.gst_no = 'GST number is required'
     } else if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/.test(formData.gst_no.replace(/\s/g, '').toUpperCase())) {
-      newErrors.gst_no = 'Invalid GST number format (e.g., 27ABCDE1234F1Z5)'
+      newErrors.gst_no = 'Invalid GST number format (e.g. 27ABCDE1234F1Z5)'
     } else if (formData.gst_no.replace(/\s/g, '').length !== 15) {
       newErrors.gst_no = 'GST number must be exactly 15 characters'
     }
@@ -175,7 +175,7 @@ const AddCompanyModal: React.FC<AddCompanyModalProps> = ({ isOpen, onClose, onSu
             <form id="company-form" onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="company_name" className="block text-sm font-medium text-gray-700">
-                  Company Name *
+                  Company Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -195,7 +195,7 @@ const AddCompanyModal: React.FC<AddCompanyModalProps> = ({ isOpen, onClose, onSu
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email *
+                  Email <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -215,7 +215,7 @@ const AddCompanyModal: React.FC<AddCompanyModalProps> = ({ isOpen, onClose, onSu
 
               <div>
                 <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                  Address
+                  Address <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -230,7 +230,7 @@ const AddCompanyModal: React.FC<AddCompanyModalProps> = ({ isOpen, onClose, onSu
 
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                  Phone *
+                  Phone <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
@@ -250,7 +250,7 @@ const AddCompanyModal: React.FC<AddCompanyModalProps> = ({ isOpen, onClose, onSu
 
               <div>
                 <label htmlFor="gst_no" className="block text-sm font-medium text-gray-700">
-                  GST Number *
+                  GST Number <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"

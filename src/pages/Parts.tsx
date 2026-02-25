@@ -4,6 +4,8 @@ import { superadminApi } from '../services/superadminApi'
 import type { PartWithCustomer, CustomerWithParts } from '../types/api'
 import AddPartModal from '../components/AddPartModal'
 import EditPartModal from '../components/EditPartModal'
+import ConfirmModal from '../components/ConfirmModal'
+import { useToast } from '../contexts/ToastContext'
 
 const Parts: React.FC = () => {
   const [parts, setParts] = useState<any[]>([])
@@ -16,6 +18,8 @@ const Parts: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; partId: number | null; partDescription: string }>({ isOpen: false, partId: null, partDescription: '' })
+  const { addToast } = useToast()
 
   useEffect(() => {
     fetchData()
@@ -123,19 +127,31 @@ const Parts: React.FC = () => {
     fetchData()
   }
 
-  const handleDeletePart = async (partId: number, partDescription: string) => {
-    if (window.confirm(`Are you sure you want to delete part "${partDescription}"? This action cannot be undone.`)) {
+  const handleDeletePart = (partId: number, partDescription: string) => {
+    setDeleteConfirm({
+      isOpen: true,
+      partId,
+      partDescription
+    })
+  }
+
+  const confirmDeletePart = async () => {
+    if (deleteConfirm.partId) {
       try {
-        const response = await superadminApi.deletePart(partId) as { success: boolean }
+        const response = await superadminApi.deletePart(deleteConfirm.partId) as { success: boolean }
         if (response.success) {
           // Refresh parts list
           await fetchData()
+          addToast('Part deleted successfully', 'success')
+        } else {
+          addToast('Failed to delete part', 'error')
         }
       } catch (error) {
         console.error('Error deleting part:', error)
-        alert('Failed to delete part')
+        addToast('Failed to delete part', 'error')
       }
     }
+    setDeleteConfirm({ isOpen: false, partId: null, partDescription: '' })
   }
 
   if (isLoading) {
@@ -516,6 +532,18 @@ const Parts: React.FC = () => {
           part={selectedPart}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, partId: null, partDescription: '' })}
+        onConfirm={confirmDeletePart}
+        title="Delete Part"
+        message={`Are you sure you want to delete part "${deleteConfirm.partDescription}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </div>
   )
 }

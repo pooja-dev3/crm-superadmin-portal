@@ -193,6 +193,26 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
       setFormData(prev => ({ ...prev, [name]: numValue }))
     } else {
       setFormData(prev => ({ ...prev, [name]: value }))
+      
+      // Auto-fill PO Number when a part is selected
+      if (name === 'part_id' && value) {
+        const selectedPart = parts.find(part => part.id === Number(value))
+        if (selectedPart) {
+          // Generate PO Number based on part information
+          const partNo = selectedPart.drawing_no || `PART-${selectedPart.id}`
+          const today = new Date()
+          const dateStr = today.getFullYear().toString().slice(-2) + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0')
+          const poNumber = `PO-${dateStr}-${partNo}`
+          
+          setFormData(prev => ({ 
+            ...prev, 
+            part_id: Number(value),
+            po_no: poNumber,
+            // Also auto-fill other fields from part data if available
+            po_drg_rev: selectedPart.po_drg_rev || prev.po_drg_rev
+          }))
+        }
+      }
     }
   }
 
@@ -207,6 +227,9 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
     }
     if (!formData.po_no?.trim()) {
       newErrors.po_no = 'PO number is required'
+    }
+    if (!formData.po_date) {
+      newErrors.po_date = 'PO date is required'
     }
     if (!formData.po_qty || formData.po_qty <= 0) {
       newErrors.po_qty = 'PO quantity must be greater than 0'
@@ -301,7 +324,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="company" className="block text-sm font-medium text-gray-700">
-                    Company *
+                    Company <span className="text-red-500">*</span>
                   </label>
                   <select
                     id="company"
@@ -335,7 +358,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
-                    Customer * {!formData.comp_name && <span className="text-gray-400">(Select company first)</span>}
+                    Customer <span className="text-red-500">*</span> {!formData.comp_name && <span className="text-gray-400">(Select company first)</span>}
                   </label>
                   <select
                     id="customer_id"
@@ -370,7 +393,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="part_id" className="block text-sm font-medium text-gray-700">
-                    Part * {!formData.customer_id && <span className="text-gray-400">(Select customer first)</span>}
+                    Part <span className="text-red-500">*</span> {!formData.customer_id && <span className="text-gray-400">(Select customer first)</span>}
                   </label>
                   <select
                     id="part_id"
@@ -400,7 +423,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="po_no" className="block text-sm font-medium text-gray-700">
-                    PO Number *
+                    PO Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -418,7 +441,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
 
                 <div>
                   <label htmlFor="po_date" className="block text-sm font-medium text-gray-700">
-                    PO Date
+                    PO Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
@@ -426,13 +449,18 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                     name="po_date"
                     value={formData.po_date || ''}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                      errors.po_date ? 'border-red-300' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.po_date && (
+                    <p className="mt-1 text-sm text-red-600">{errors.po_date}</p>
+                  )}
                 </div>
 
                 <div>
                   <label htmlFor="po_qty" className="block text-sm font-medium text-gray-700">
-                    PO Quantity *
+                    PO Quantity <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -451,7 +479,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
 
                 <div>
                   <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-                    Unit Price *
+                    Unit Price <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -471,7 +499,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
 
                 <div>
                   <label htmlFor="balance_qty" className="block text-sm font-medium text-gray-700">
-                    Balance Quantity
+                    Balance Quantity <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -489,7 +517,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="po_drg_rev" className="block text-sm font-medium text-gray-700">
-                    PO Drawing Revision
+                    PO Drawing Revision <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -504,7 +532,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
 
                 <div>
                   <label htmlFor="reqd_date_as_per_po" className="block text-sm font-medium text-gray-700">
-                    Required Date
+                    Required Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
@@ -519,7 +547,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
 
               <div>
                 <label htmlFor="acknowledgement_remarks" className="block text-sm font-medium text-gray-700">
-                  Acknowledgement Remarks
+                  Acknowledgement Remarks 
                 </label>
                 <textarea
                   id="acknowledgement_remarks"

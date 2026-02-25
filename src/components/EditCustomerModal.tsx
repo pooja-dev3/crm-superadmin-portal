@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { customerApi, type Customer, type UpdateCustomerRequest } from '../services/customers'
 import { companyApi, type Company } from '../services/companies'
+import { useToast } from '../contexts/ToastContext'
 
 interface EditCustomerModalProps {
   isOpen: boolean
@@ -23,6 +24,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({ isOpen, onClose, 
   const [companies, setCompanies] = useState<Company[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Partial<UpdateCustomerRequest>>({})
+  const { addToast } = useToast()
 
   useEffect(() => {
     if (isOpen) {
@@ -120,12 +122,15 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({ isOpen, onClose, 
     try {
       const response = await customerApi.updateCustomer(customer.id, formData)
       if (response.success) {
+        addToast('Customer updated successfully', 'success')
         onSuccess()
         handleClose()
+      } else {
+        addToast('Failed to update customer', 'error')
       }
     } catch (error) {
       console.error('Error updating customer:', error)
-      alert('Failed to update customer')
+      addToast('Failed to update customer', 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -178,7 +183,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({ isOpen, onClose, 
               <div className="space-y-4">
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Customer Name *
+                    Customer Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -199,7 +204,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({ isOpen, onClose, 
 
                 <div>
                   <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                    Address *
+                    Address <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     id="address"
@@ -220,7 +225,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({ isOpen, onClose, 
 
                 <div>
                   <label htmlFor="contact_no" className="block text-sm font-medium text-gray-700">
-                    Contact Number *
+                    Contact Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -241,7 +246,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({ isOpen, onClose, 
 
                 <div>
                   <label htmlFor="gst_no" className="block text-sm font-medium text-gray-700">
-                    GST Number *
+                    GST Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -262,7 +267,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({ isOpen, onClose, 
 
                 <div>
                   <label htmlFor="company" className="block text-sm font-medium text-gray-700">
-                    Company *
+                    Company <span className="text-red-500">*</span>
                   </label>
                   <select
                     id="company"
@@ -288,7 +293,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({ isOpen, onClose, 
 
                 <div>
                   <label htmlFor="comp_code" className="block text-sm font-medium text-gray-700">
-                    Company Code
+                    Company Code <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"

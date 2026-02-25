@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { partApi } from '../services/parts'
 import { companyApi, type Company } from '../services/companies'
 import type { PartWithCustomer, CreatePartRequest, CustomerWithParts } from '../types/api'
+import { useToast } from '../contexts/ToastContext'
 
 interface EditPartModalProps {
   isOpen: boolean
@@ -28,14 +29,19 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
     po_date: '',
     po_received: false,
     po_qty: undefined,
-    po_drg_rev: '',
-    acknowledgement_remarks: '',
+    balance_qty: undefined,
+    price: undefined,
     reqd_date_as_per_po: '',
+    customer_po_no: '',
+    customer_po_date: '',
+    status: 'active',
     comp_name: ''
   })
   const [companies, setCompanies] = useState<Company[]>([])
+  const [customers, setCustomers] = useState<CustomerWithParts[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Partial<CreatePartRequest>>({})
+  const { addToast } = useToast()
 
   useEffect(() => {
     if (isOpen) {
@@ -142,12 +148,15 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
     try {
       const response = await partApi.updatePart(part.id, formData)
       if (response.success) {
+        addToast('Part updated successfully', 'success')
         onSuccess()
         handleClose()
+      } else {
+        addToast('Failed to update part', 'error')
       }
     } catch (error) {
       console.error('Error updating part:', error)
-      alert('Failed to update part')
+      addToast('Failed to update part', 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -213,7 +222,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
-                      Customer *
+                      Customer <span className="text-red-500">*</span>
                     </label>
                     <select
                       id="customer_id"
@@ -235,7 +244,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
 
                   <div>
                     <label htmlFor="company" className="block text-sm font-medium text-gray-700">
-                      Company *
+                      Company <span className="text-red-500">*</span>
                     </label>
                     <select
                       id="company"
@@ -261,7 +270,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
 
                   <div>
                     <label htmlFor="part_description" className="block text-sm font-medium text-gray-700">
-                      Part Description *
+                      Part Description <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       id="part_description"
@@ -284,7 +293,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="drawing_no" className="block text-sm font-medium text-gray-700">
-                      Drawing Number *
+                      Drawing Number <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -305,7 +314,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
 
                   <div>
                     <label htmlFor="rev_no" className="block text-sm font-medium text-gray-700">
-                      Revision Number
+                      Revision Number <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -323,7 +332,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="net_wt" className="block text-sm font-medium text-gray-700">
-                      Net Weight
+                      Net Weight <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
@@ -340,7 +349,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
 
                   <div>
                     <label htmlFor="thickness" className="block text-sm font-medium text-gray-700">
-                      Thickness
+                      Thickness <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
@@ -359,7 +368,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="tool_information" className="block text-sm font-medium text-gray-700">
-                      Tool Information
+                      Tool Information <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       id="tool_information"
@@ -375,7 +384,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
 
                   <div>
                     <label htmlFor="raw_material" className="block text-sm font-medium text-gray-700">
-                      Raw Material
+                      Raw Material <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       id="raw_material"
@@ -393,7 +402,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="drawing_location" className="block text-sm font-medium text-gray-700">
-                      Drawing Location
+                      Drawing Location <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       id="drawing_location"
@@ -409,7 +418,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
 
                   <div>
                     <label htmlFor="operation_sequence" className="block text-sm font-medium text-gray-700">
-                      Operation Sequence
+                      Operation Sequence <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       id="operation_sequence"
@@ -427,7 +436,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="lead_time" className="block text-sm font-medium text-gray-700">
-                      Lead Time (days)
+                      Lead Time (days) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
@@ -443,7 +452,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
 
                   <div>
                     <label htmlFor="po_no" className="block text-sm font-medium text-gray-700">
-                      PO Number
+                      PO Number <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -461,7 +470,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="po_date" className="block text-sm font-medium text-gray-700">
-                      PO Date
+                      PO Date <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="date"
@@ -476,7 +485,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
 
                   <div>
                     <label htmlFor="po_qty" className="block text-sm font-medium text-gray-700">
-                      PO Quantity
+                      PO Quantity <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
@@ -494,7 +503,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="po_drg_rev" className="block text-sm font-medium text-gray-700">
-                      PO Drawing Revision
+                      PO Drawing Revision <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -510,7 +519,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
 
                   <div>
                     <label htmlFor="acknowledgement_remarks" className="block text-sm font-medium text-gray-700">
-                      Acknowledgement Remarks
+                      Acknowledgement Remarks <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       id="acknowledgement_remarks"
@@ -526,7 +535,7 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
 
                   <div>
                     <label htmlFor="reqd_date_as_per_po" className="block text-sm font-medium text-gray-700">
-                      Required Date as per PO
+                      Required Date as per PO <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="date"

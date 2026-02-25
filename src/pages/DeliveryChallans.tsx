@@ -5,6 +5,7 @@ import AddDeliveryChallanModal from '../components/AddDeliveryChallanModal'
 import EditDeliveryChallanModal from '../components/EditDeliveryChallanModal'
 import ApiStatusIndicator from '../components/ApiStatusIndicator'
 import NotificationModal, { NotificationType } from '../components/NotificationModal'
+import ConfirmModal from '../components/ConfirmModal'
 
 interface DeliveryChallanItem {
   id: string
@@ -31,6 +32,7 @@ const DeliveryChallans: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; challanId: string | null; challanNumber: string }>({ isOpen: false, challanId: null, challanNumber: '' })
   
   // Notification state
   const [showNotification, setShowNotification] = useState(false)
@@ -254,10 +256,18 @@ const DeliveryChallans: React.FC = () => {
     showNotificationModal('success', 'Success', 'Delivery challan updated successfully!')
   }
 
-  const handleDeleteChallan = async (challanId: string, challanNumber: string) => {
-    if (window.confirm(`Are you sure you want to delete delivery challan "${challanNumber}"? This action cannot be undone.`)) {
+  const handleDeleteChallan = (challanId: string, challanNumber: string) => {
+    setDeleteConfirm({
+      isOpen: true,
+      challanId,
+      challanNumber
+    })
+  }
+
+  const confirmDeleteChallan = async () => {
+    if (deleteConfirm.challanId) {
       try {
-        const response = await superadminApi.deleteDeliveryChallan(parseInt(challanId)) as { success: boolean }
+        const response = await superadminApi.deleteDeliveryChallan(parseInt(deleteConfirm.challanId)) as { success: boolean }
         if (response.success) {
           showNotificationModal('success', 'Success', 'Delivery challan deleted successfully!')
           fetchChallans()
@@ -269,6 +279,7 @@ const DeliveryChallans: React.FC = () => {
         showNotificationModal('error', 'Error', 'An error occurred while deleting the delivery challan.')
       }
     }
+    setDeleteConfirm({ isOpen: false, challanId: null, challanNumber: '' })
   }
 
   const getStatusIcon = (status: string) => {
@@ -681,6 +692,18 @@ const DeliveryChallans: React.FC = () => {
         type={notificationType}
         title={notificationTitle}
         message={notificationMessage}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, challanId: null, challanNumber: '' })}
+        onConfirm={confirmDeleteChallan}
+        title="Delete Delivery Challan"
+        message={`Are you sure you want to delete delivery challan "${deleteConfirm.challanNumber}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
       />
     </div>
   )

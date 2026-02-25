@@ -157,7 +157,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
                 {/* Step 1: Company Selection */}
                 <div>
                   <label htmlFor="company" className="block text-sm font-medium text-gray-700">
-                    Company *
+                    Company <span className="text-red-500">*</span>
                   </label>
                   <select
                     id="company"
@@ -187,7 +187,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
                 {/* Step 2: Customer Name */}
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Customer Name *
+                    Customer Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -207,7 +207,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
 
                 <div>
                   <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                    Address *
+                    Address <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     id="address"
@@ -227,7 +227,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
 
                 <div>
                   <label htmlFor="contact_no" className="block text-sm font-medium text-gray-700">
-                    Contact Number *
+                    Contact Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -247,7 +247,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
 
                 <div>
                   <label htmlFor="gst_no" className="block text-sm font-medium text-gray-700">
-                    GST Number *
+                    GST Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -267,7 +267,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
 
                 <div>
                   <label htmlFor="comp_code" className="block text-sm font-medium text-gray-700">
-                    Company Code
+                    Company Code <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"

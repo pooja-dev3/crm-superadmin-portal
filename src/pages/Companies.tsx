@@ -5,6 +5,7 @@ import { superadminApi } from '../services/superadminApi'
 import type { Company } from '../services/companies'
 import AddCompanyModal from '../components/AddCompanyModal'
 import EditCompanyModal from '../components/EditCompanyModal'
+import ConfirmModal from '../components/ConfirmModal'
 import { useToast } from '../contexts/ToastContext'
 
 const Companies: React.FC = () => {
@@ -16,6 +17,8 @@ const Companies: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
+  const [statusConfirm, setStatusConfirm] = useState<{ isOpen: boolean; company: Company | null; newStatus: boolean }>({ isOpen: false, company: null, newStatus: false })
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; companyId: string | null; companyName: string }>({ isOpen: false, companyId: null, companyName: '' })
   const { addToast } = useToast()
 
   const navigate = useNavigate()
@@ -104,87 +107,101 @@ const Companies: React.FC = () => {
     setShowEditModal(true)
   }
 
-  const handleToggleStatus = async (company: Company) => {
-    try {
-      const newStatus = !company.is_active
-      const confirmMessage = `Are you sure you want to ${newStatus ? 'activate' : 'deactivate'} "${company.comp_name}"?`
-      
-      if (window.confirm(confirmMessage)) {
+  const handleToggleStatus = (company: Company) => {
+    const newStatus = !company.is_active
+    setStatusConfirm({
+      isOpen: true,
+      company,
+      newStatus
+    })
+  }
+
+  const confirmToggleStatus = async () => {
+    if (statusConfirm.company) {
+      try {
         // Update the company status via API
-        const response = await superadminApi.updateCompany(company.id, {
-          ...company,
-          is_active: newStatus
+        const response = await superadminApi.updateCompany(statusConfirm.company.id, {
+          ...statusConfirm.company,
+          is_active: statusConfirm.newStatus
         }) as { success: boolean; data: { id: number } }
         
         if (response.success) {
           // Update local state
           setCompanies(prev => 
             prev.map(c => 
-              c.id === company.id 
-                ? { ...c, is_active: newStatus }
+              c.id === statusConfirm.company!.id 
+                ? { ...c, is_active: statusConfirm.newStatus }
                 : c
             )
           )
           // Show success toast
-          addToast(`Company ${newStatus ? 'activated' : 'deactivated'} successfully`, 'success')
+          addToast(`Company ${statusConfirm.newStatus ? 'activated' : 'deactivated'} successfully`, 'success')
         } else {
           addToast('Failed to update company status', 'error')
         }
+      } catch (error) {
+        console.error('Error toggling company status:', error)
+        addToast('Error updating company status', 'error')
       }
-    } catch (error) {
-      console.error('Error toggling company status:', error)
-      addToast('Error updating company status', 'error')
     }
+    setStatusConfirm({ isOpen: false, company: null, newStatus: false })
   }
 
-  const handleDeleteCompany = async (companyId: string) => {
-    const company = companies.find(c => c.id.toString() === companyId)
-    if (company) {
-      const confirmMessage = `Are you sure you want to delete "${company.comp_name}"? This action cannot be undone.`
-      
-      if (confirm(confirmMessage)) {
-        try {
-          const response = await superadminApi.deleteCompany(parseInt(companyId)) as { success: boolean }
-          if (response.success) {
-            // Refresh companies list
-            const companiesResponse = await superadminApi.getCompanies() as { success: boolean; data: any }
-            if (companiesResponse.success) {
-              let companiesData: any[] = []
-              if (Array.isArray(companiesResponse.data)) {
-                companiesData = companiesResponse.data
-              } else if (companiesResponse.data && Array.isArray(companiesResponse.data.data)) {
-                companiesData = companiesResponse.data.data
-              }
-              
-              const mappedCompanies = companiesData.map((company: any) => ({
-                id: company.id,
-                comp_name: company.comp_name || company.company_name || '',
-                email: company.email || '',
-                address: company.address || '',
-                phone: company.phno || company.phone || '',
-                gst_no: company.gst || company.gst_no || '',
-                code: company.code || company.company_code || '',
-                phno: company.phno || company.phone || '',
-                is_active: company.status === 'active' || company.is_active || false,
-                created_at: company.created_at || new Date().toISOString(),
-                updated_at: company.updated_at || new Date().toISOString()
-              }))
-              
-              // Sort by created_at descending (newest first)
-              const sortedCompanies = mappedCompanies.sort((a, b) => 
-                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-              )
-              
-              setCompanies(sortedCompanies)
-              setFilteredCompanies(sortedCompanies)
+  const handleDeleteCompany = (companyId: string, companyName: string) => {
+    setDeleteConfirm({
+      isOpen: true,
+      companyId,
+      companyName
+    })
+  }
+
+  const confirmDeleteCompany = async () => {
+    if (deleteConfirm.companyId) {
+      try {
+        const response = await superadminApi.deleteCompany(parseInt(deleteConfirm.companyId)) as { success: boolean }
+        if (response.success) {
+          // Refresh companies list
+          const companiesResponse = await superadminApi.getCompanies() as { success: boolean; data: any }
+          if (companiesResponse.success) {
+            let companiesData: any[] = []
+            if (Array.isArray(companiesResponse.data)) {
+              companiesData = companiesResponse.data
+            } else if (companiesResponse.data && Array.isArray(companiesResponse.data.data)) {
+              companiesData = companiesResponse.data.data
             }
+            
+            const mappedCompanies = companiesData.map((company: any) => ({
+              id: company.id,
+              comp_name: company.comp_name || company.company_name || '',
+              email: company.email || '',
+              address: company.address || '',
+              phone: company.phno || company.phone || '',
+              gst_no: company.gst || company.gst_no || '',
+              code: company.code || company.company_code || '',
+              phno: company.phno || company.phone || '',
+              is_active: company.status === 'active' || company.is_active || false,
+              created_at: company.created_at || new Date().toISOString(),
+              updated_at: company.updated_at || new Date().toISOString()
+            }))
+            
+            // Sort by created_at descending (newest first)
+            const sortedCompanies = mappedCompanies.sort((a, b) => 
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            )
+            
+            setCompanies(sortedCompanies)
+            setFilteredCompanies(sortedCompanies)
           }
-        } catch (error) {
-          console.error('Error deleting company:', error)
-          alert('Failed to delete company')
+          addToast('Company deleted successfully', 'success')
+        } else {
+          addToast('Failed to delete company', 'error')
         }
+      } catch (error) {
+        console.error('Error deleting company:', error)
+        addToast('Failed to delete company', 'error')
       }
     }
+    setDeleteConfirm({ isOpen: false, companyId: null, companyName: '' })
   }
 
   const handleAddCompany = () => {
@@ -239,7 +256,7 @@ const Companies: React.FC = () => {
       }
     } catch (error) {
       console.error('Error creating company:', error)
-      alert(error instanceof Error ? error.message : 'Failed to create company')
+      addToast(error instanceof Error ? error.message : 'Failed to create company', 'error')
     }
   }
 
@@ -293,7 +310,7 @@ const Companies: React.FC = () => {
       }
     } catch (error) {
       console.error('Error updating company:', error)
-      alert(error instanceof Error ? error.message : 'Failed to update company')
+      addToast(error instanceof Error ? error.message : 'Failed to update company', 'error')
     }
   }
 
@@ -458,7 +475,7 @@ const Companies: React.FC = () => {
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteCompany(company.id.toString())}
+                        onClick={() => handleDeleteCompany(company.id.toString(), company.comp_name)}
                         className="p-1 text-red-600 hover:text-red-900"
                         title="Delete"
                       >
@@ -501,6 +518,30 @@ const Companies: React.FC = () => {
           company={selectedCompany}
         />
       )}
+
+      {/* Status Toggle Confirmation Modal */}
+      <ConfirmModal
+        isOpen={statusConfirm.isOpen}
+        onClose={() => setStatusConfirm({ isOpen: false, company: null, newStatus: false })}
+        onConfirm={confirmToggleStatus}
+        title={`${statusConfirm.newStatus ? 'Activate' : 'Deactivate'} Company`}
+        message={`Are you sure you want to ${statusConfirm.newStatus ? 'activate' : 'deactivate'} "${statusConfirm.company?.comp_name || ''}"?`}
+        confirmText={statusConfirm.newStatus ? 'Activate' : 'Deactivate'}
+        cancelText="Cancel"
+        type={statusConfirm.newStatus ? 'info' : 'warning'}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, companyId: null, companyName: '' })}
+        onConfirm={confirmDeleteCompany}
+        title="Delete Company"
+        message={`Are you sure you want to delete "${deleteConfirm.companyName}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </>
   )
 }

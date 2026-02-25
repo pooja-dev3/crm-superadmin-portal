@@ -233,7 +233,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
                 {/* Step 1: Company Selection */}
                 <div>
                   <label htmlFor="company" className="block text-sm font-medium text-gray-700">
-                    Company *
+                    Company <span className="text-red-500">*</span>
                   </label>
                   <select
                     id="company"
@@ -265,7 +265,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
                 {/* Step 2: Customer Selection */}
                 <div>
                   <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
-                    Customer * {!formData.comp_name && <span className="text-gray-400">(Select company first)</span>}
+                    Customer <span className="text-red-500">*</span> {!formData.comp_name && <span className="text-gray-400">(Select company first)</span>}
                   </label>
                   <select
                     id="customer_id"
@@ -300,7 +300,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="part_description" className="block text-sm font-medium text-gray-700">
-                    Part Description *
+                    Part Description <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -320,7 +320,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div>
                   <label htmlFor="drawing_no" className="block text-sm font-medium text-gray-700">
-                    Drawing Number *
+                    Drawing Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -340,7 +340,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div>
                   <label htmlFor="rev_no" className="block text-sm font-medium text-gray-700">
-                    Revision Number
+                    Revision Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -355,7 +355,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div>
                   <label htmlFor="net_wt" className="block text-sm font-medium text-gray-700">
-                    Net Weight
+                    Net Weight <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -371,7 +371,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div>
                   <label htmlFor="thickness" className="block text-sm font-medium text-gray-700">
-                    Thickness
+                    Thickness <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -387,7 +387,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div>
                   <label htmlFor="raw_material" className="block text-sm font-medium text-gray-700">
-                    Raw Material
+                    Raw Material <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -402,7 +402,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div>
                   <label htmlFor="lead_time" className="block text-sm font-medium text-gray-700">
-                    Lead Time (days)
+                    Lead Time (days) <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -417,7 +417,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div className="md:col-span-2">
                   <label htmlFor="tool_information" className="block text-sm font-medium text-gray-700">
-                    Tool Information
+                    Tool Information <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -432,7 +432,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div className="md:col-span-2">
                   <label htmlFor="drawing_location" className="block text-sm font-medium text-gray-700">
-                    Drawing Location
+                    Drawing Location <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -447,7 +447,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div className="md:col-span-2">
                   <label htmlFor="operation_sequence" className="block text-sm font-medium text-gray-700">
-                    Operation Sequence
+                    Operation Sequence <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     id="operation_sequence"
@@ -462,7 +462,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div>
                   <label htmlFor="po_no" className="block text-sm font-medium text-gray-700">
-                    PO Number
+                    PO Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -477,7 +477,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div>
                   <label htmlFor="po_date" className="block text-sm font-medium text-gray-700">
-                    PO Date
+                    PO Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
@@ -491,7 +491,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div>
                   <label htmlFor="po_qty" className="block text-sm font-medium text-gray-700">
-                    PO Quantity
+                    PO Quantity <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -506,7 +506,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div>
                   <label htmlFor="po_drg_rev" className="block text-sm font-medium text-gray-700">
-                    PO Drawing Revision
+                    PO Drawing Revision <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -521,7 +521,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div className="md:col-span-2">
                   <label htmlFor="reqd_date_as_per_po" className="block text-sm font-medium text-gray-700">
-                    Required Date as per PO
+                    Required Date as per PO <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
@@ -535,7 +535,7 @@ const AddPartModal: React.FC<AddPartModalProps> = ({ isOpen, onClose, onSuccess 
 
                 <div className="md:col-span-2">
                   <label htmlFor="acknowledgement_remarks" className="block text-sm font-medium text-gray-700">
-                    Acknowledgement Remarks
+                    Acknowledgement Remarks <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     id="acknowledgement_remarks"

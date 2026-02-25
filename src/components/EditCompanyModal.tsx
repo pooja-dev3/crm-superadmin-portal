@@ -107,7 +107,7 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
     if (!formData.gst_no.trim()) {
       newErrors.gst_no = 'GST number is required'
     } else if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/.test(formData.gst_no.replace(/\s/g, '').toUpperCase())) {
-      newErrors.gst_no = 'Invalid GST number format (e.g., 27ABCDE1234F1Z5)'
+      newErrors.gst_no = 'Invalid GST number format (e.g. 27ABCDE1234F1Z5)'
     } else if (formData.gst_no.replace(/\s/g, '').length !== 15) {
       newErrors.gst_no = 'GST number must be exactly 15 characters'
     }
@@ -165,7 +165,7 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
             <form id="edit-company-form" onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="comp_name" className="block text-sm font-medium text-gray-700">
-                  Company Name *
+                  Company Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -173,7 +173,8 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
                   name="comp_name"
                   value={formData.comp_name}
                   onChange={handleInputChange}
-                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                  disabled
+                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
                     errors.comp_name ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Enter company name"
@@ -185,7 +186,7 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email *
+                  Email <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -205,7 +206,7 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
 
               <div>
                 <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                  Address
+                  Address <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -220,7 +221,7 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
 
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                  Phone *
+                  Phone <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
@@ -240,7 +241,7 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
 
               <div>
                 <label htmlFor="gst_no" className="block text-sm font-medium text-gray-700">
-                  GST Number *
+                  GST Number <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"

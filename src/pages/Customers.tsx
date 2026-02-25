@@ -3,6 +3,8 @@ import { Search, Plus, Edit, Trash2, Users, Building, Phone, FileText, X } from 
 import { superadminApi } from '../services/superadminApi'
 import AddCustomerModal from '../components/AddCustomerModal'
 import EditCustomerModal from '../components/EditCustomerModal'
+import ConfirmModal from '../components/ConfirmModal'
+import { useToast } from '../contexts/ToastContext'
 
 const Customers: React.FC = () => {
   const [customers, setCustomers] = useState<any[]>([])
@@ -12,6 +14,8 @@ const Customers: React.FC = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; customerId: number | null; customerName: string }>({ isOpen: false, customerId: null, customerName: '' })
+  const { addToast } = useToast()
 
   useEffect(() => {
     fetchCustomers()
@@ -90,19 +94,31 @@ const Customers: React.FC = () => {
     fetchCustomers()
   }
 
-  const handleDeleteCustomer = async (customerId: number, customerName: string) => {
-    if (window.confirm(`Are you sure you want to delete customer "${customerName}"? This action cannot be undone.`)) {
+  const handleDeleteCustomer = (customerId: number, customerName: string) => {
+    setDeleteConfirm({
+      isOpen: true,
+      customerId,
+      customerName
+    })
+  }
+
+  const confirmDeleteCustomer = async () => {
+    if (deleteConfirm.customerId) {
       try {
-        const response = await superadminApi.deleteCustomer(customerId) as { success: boolean }
+        const response = await superadminApi.deleteCustomer(deleteConfirm.customerId) as { success: boolean }
         if (response.success) {
           // Refresh customers list
           await fetchCustomers()
+          addToast('Customer deleted successfully', 'success')
+        } else {
+          addToast('Failed to delete customer', 'error')
         }
       } catch (error) {
         console.error('Error deleting customer:', error)
-        alert('Failed to delete customer')
+        addToast('Failed to delete customer', 'error')
       }
     }
+    setDeleteConfirm({ isOpen: false, customerId: null, customerName: '' })
   }
 
   if (isLoading) {
@@ -167,8 +183,8 @@ const Customers: React.FC = () => {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Created Date
                   </th>
-                  <th scope="col" className="relative px-6 py-3">
-                    <span className="sr-only">Actions</span>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -254,6 +270,18 @@ const Customers: React.FC = () => {
           customer={selectedCustomer}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, customerId: null, customerName: '' })}
+        onConfirm={confirmDeleteCustomer}
+        title="Delete Customer"
+        message={`Are you sure you want to delete customer "${deleteConfirm.customerName}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     
       </div>
     </>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { ordersApi, customerApi, partApi, companyApi } from '../services'
 import type { Order, Customer, PartWithCustomer, OrderDisplay, Company } from '../types/api'
+import { useToast } from '../contexts/ToastContext'
 
 interface EditOrderModalProps {
   isOpen: boolean
@@ -17,6 +18,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
   const [companies, setCompanies] = useState<Company[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Partial<Order>>({})
+  const { addToast } = useToast()
 
   useEffect(() => {
     if (isOpen) {
@@ -164,15 +166,15 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
       console.log('Edit response:', response) // Debug log
       if (response.success) {
         console.log('Edit successful, calling onSuccess') // Debug log
-        alert('Order updated successfully')
+        addToast('Order updated successfully', 'success')
         onSuccess()
         onClose()
       } else {
-        alert('Failed to update order: ' + (response.message || 'Unknown error'))
+        addToast('Failed to update order: ' + (response.message || 'Unknown error'), 'error')
       }
     } catch (error) {
       console.error('Error updating order:', error)
-      alert('Failed to update order. Please try again.')
+      addToast('Failed to update order. Please try again.', 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -210,7 +212,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
-                    Customer *
+                    Customer <span className="text-red-500">*</span>
                   </label>
                   <select
                     id="customer_id"
@@ -233,7 +235,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
 
                 <div>
                   <label htmlFor="part_id" className="block text-sm font-medium text-gray-700">
-                    Part *
+                    Part <span className="text-red-500">*</span>
                   </label>
                   <select
                     id="part_id"
@@ -258,7 +260,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="po_no" className="block text-sm font-medium text-gray-700">
-                    PO Number *
+                    PO Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -276,7 +278,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
 
                 <div>
                   <label htmlFor="po_date" className="block text-sm font-medium text-gray-700">
-                    PO Date
+                    PO Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
@@ -292,7 +294,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label htmlFor="po_qty" className="block text-sm font-medium text-gray-700">
-                    PO Quantity *
+                    PO Quantity <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -311,7 +313,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
 
                 <div>
                   <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-                    Unit Price *
+                    Unit Price <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -331,7 +333,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
 
                 <div>
                   <label htmlFor="comp_name" className="block text-sm font-medium text-gray-700">
-                    Company *
+                    Company <span className="text-red-500">*</span>
                   </label>
                   <select
                     id="comp_name"
@@ -354,7 +356,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
 
                 <div>
                   <label htmlFor="balance_qty" className="block text-sm font-medium text-gray-700">
-                    Balance Quantity
+                    Balance Quantity <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -372,7 +374,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="po_drg_rev" className="block text-sm font-medium text-gray-700">
-                    PO Drawing Revision
+                    PO Drawing Revision <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -387,7 +389,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
 
                 <div>
                   <label htmlFor="reqd_date_as_per_po" className="block text-sm font-medium text-gray-700">
-                    Required Date
+                    Required Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
@@ -402,7 +404,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
 
               <div>
                 <label htmlFor="acknowledgement_remarks" className="block text-sm font-medium text-gray-700">
-                  Acknowledgement Remarks
+                  Acknowledgement Remarks <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   id="acknowledgement_remarks"

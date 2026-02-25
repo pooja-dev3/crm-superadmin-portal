@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X, Eye, EyeOff } from 'lucide-react'
 import { superadminApi } from '../services/superadminApi'
 import type { ApiResponse } from '../types/api'
+import { useToast } from '../contexts/ToastContext'
 
 interface AddAdminModalProps {
   isOpen: boolean
@@ -21,10 +22,13 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
     is_active: true
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [companies, setCompanies] = useState<any[]>([])
   const [selectedCompany, setSelectedCompany] = useState<any>(null)
   const [isLoadingCompanies, setIsLoadingCompanies] = useState(false)
+  const { addToast } = useToast()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -131,8 +135,8 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
     // Password validation
     if (!formData.password.trim()) {
       newErrors.password = 'Password is required'
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters'
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters'
     } else if (formData.password.length > 128) {
       newErrors.password = 'Password must be less than 128 characters'
     } else if (!/(?=.*[a-z])/.test(formData.password)) {
@@ -184,12 +188,15 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
       
       const response = await superadminApi.createCompanyUser(createData) as ApiResponse<any>
       if (response.success) {
+        addToast('Admin created successfully', 'success')
         onSuccess()
         handleClose()
+      } else {
+        addToast('Failed to create admin', 'error')
       }
     } catch (error) {
       console.error('Error creating admin:', error)
-      alert('Failed to create admin')
+      addToast('Failed to create admin', 'error')
     } finally {
       setIsLoading(false)
     }
@@ -241,7 +248,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Name *
+                  Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -264,7 +271,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
+                  Email <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -287,7 +294,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone *
+                  Phone <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
@@ -310,7 +317,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Company
+                  Company <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={selectedCompany?.id || ''}
@@ -344,7 +351,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Role *
+                  Role <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="role"
@@ -370,19 +377,32 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password *
+                  Password <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${
-                    errors.password ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
-                  disabled={isLoading}
-                  placeholder="Min. 6 characters"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${
+                      errors.password ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
+                    disabled={isLoading}
+                    placeholder="Min. 6 characters"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
                 {errors.password && (
                   <p className="mt-1 text-sm text-red-600 flex items-center">
                     <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
@@ -393,19 +413,32 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirm Password *
+                  Confirm Password <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="password"
-                  name="password_confirmation"
-                  value={formData.password_confirmation}
-                  onChange={handleChange}
-                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${
-                    errors.password_confirmation ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
-                  disabled={isLoading}
-                  placeholder="Re-enter password"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    name="password_confirmation"
+                    value={formData.password_confirmation}
+                    onChange={handleChange}
+                    className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${
+                      errors.password_confirmation ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
+                    disabled={isLoading}
+                    placeholder="Re-enter password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
                 {errors.password_confirmation && (
                   <p className="mt-1 text-sm text-red-600 flex items-center">
                     <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>

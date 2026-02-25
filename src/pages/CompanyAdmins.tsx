@@ -3,6 +3,8 @@ import { Search, Plus, Edit, Trash2, UserX, Key, CheckCircle, XCircle } from 'lu
 import { superadminApi } from '../services/superadminApi'
 import AddAdminModal from '../components/AddAdminModal'
 import EditAdminModal from '../components/EditAdminModal'
+import ConfirmModal from '../components/ConfirmModal'
+import { useToast } from '../contexts/ToastContext'
 
 const CompanyAdmins: React.FC = () => {
   const [admins, setAdmins] = useState<any[]>([])
@@ -14,6 +16,8 @@ const CompanyAdmins: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedAdmin, setSelectedAdmin] = useState<any | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; adminId: number | null; adminName: string }>({ isOpen: false, adminId: null, adminName: '' })
+  const { addToast } = useToast()
 
   useEffect(() => {
     fetchAdmins()
@@ -86,10 +90,13 @@ const CompanyAdmins: React.FC = () => {
       if (response.success) {
         // Refresh admins list
         await fetchAdmins()
+        addToast(`Admin ${!currentStatus ? 'activated' : 'deactivated'} successfully`, 'success')
+      } else {
+        addToast('Failed to update admin status', 'error')
       }
     } catch (error) {
       console.error('Error toggling admin status:', error)
-      alert('Failed to update admin status')
+      addToast('Failed to update admin status', 'error')
     }
   }
 
@@ -99,11 +106,13 @@ const CompanyAdmins: React.FC = () => {
       try {
         const response = await superadminApi.updateCompanyUser(adminId, { password: newPassword }) as { success: boolean }
         if (response.success) {
-          alert('Password reset successfully')
+          addToast('Password reset successfully', 'success')
+        } else {
+          addToast('Failed to reset password', 'error')
         }
       } catch (error) {
         console.error('Error resetting password:', error)
-        alert('Failed to reset password')
+        addToast('Failed to reset password', 'error')
       }
     }
   }
@@ -113,18 +122,30 @@ const CompanyAdmins: React.FC = () => {
     setShowEditModal(true)
   }
 
-  const handleDeleteAdmin = async (adminId: number) => {
-    if (window.confirm('Are you sure you want to delete this admin?')) {
+  const handleDeleteAdmin = (adminId: number, adminName: string) => {
+    setDeleteConfirm({
+      isOpen: true,
+      adminId,
+      adminName
+    })
+  }
+
+  const confirmDeleteAdmin = async () => {
+    if (deleteConfirm.adminId) {
       try {
-        const response = await superadminApi.deleteCompanyUser(adminId) as { success: boolean }
+        const response = await superadminApi.deleteCompanyUser(deleteConfirm.adminId) as { success: boolean }
         if (response.success) {
           await fetchAdmins()
+          addToast('Admin deleted successfully', 'success')
+        } else {
+          addToast('Failed to delete admin', 'error')
         }
       } catch (error) {
         console.error('Error deleting admin:', error)
-        alert('Failed to delete admin')
+        addToast('Failed to delete admin', 'error')
       }
     }
+    setDeleteConfirm({ isOpen: false, adminId: null, adminName: '' })
   }
 
   const handleAddSuccess = async () => {
@@ -312,7 +333,7 @@ const CompanyAdmins: React.FC = () => {
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteAdmin(admin.id)}
+                        onClick={() => handleDeleteAdmin(admin.id, admin.name)}
                         className="text-red-600 hover:text-red-900 p-1"
                         title="Delete Admin"
                       >
@@ -362,6 +383,18 @@ const CompanyAdmins: React.FC = () => {
           admin={selectedAdmin}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, adminId: null, adminName: '' })}
+        onConfirm={confirmDeleteAdmin}
+        title="Delete Admin"
+        message={`Are you sure you want to delete admin "${deleteConfirm.adminName}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
       </div>
     </>
   )

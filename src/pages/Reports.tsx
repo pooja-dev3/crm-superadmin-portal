@@ -5,6 +5,7 @@ import { customerApi } from '../services'
 import { ordersApi } from '../services/orders'
 import { adminApi } from '../services/admin'
 import type { ApiResponse } from '../types/api'
+import { useToast } from '../contexts/ToastContext'
 
 interface ReportData {
   totalRevenue: number
@@ -38,6 +39,7 @@ const Reports: React.FC = () => {
   const [timeRange, setTimeRange] = useState('30d')
   const [error, setError] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const { addToast } = useToast()
 
   useEffect(() => {
     fetchReportData()
@@ -194,7 +196,7 @@ const Reports: React.FC = () => {
       window.URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Error exporting data:', error)
-      alert('Failed to export data')
+      addToast('Failed to export data', 'error')
     } finally {
       setIsExporting(false)
     }

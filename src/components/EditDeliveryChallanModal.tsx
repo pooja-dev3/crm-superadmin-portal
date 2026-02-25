@@ -4,6 +4,7 @@ import { superadminApi } from '../services/superadminApi'
 import { customerApi, partApi, companyApi } from '../services'
 import type { DeliveryChallan, UpdateDeliveryChallanRequest } from '../services/deliveryChallans'
 import type { ApiResponse } from '../types/api'
+import { useToast } from '../contexts/ToastContext'
 
 interface EditDeliveryChallanModalProps {
   isOpen: boolean
@@ -13,6 +14,8 @@ interface EditDeliveryChallanModalProps {
 }
 
 const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isOpen, onClose, onSuccess, challan }) => {
+  const { addToast } = useToast()
+  
   // Helper function to format date for input field
   const formatDateForInput = (dateString: string | null | undefined): string => {
     if (!dateString) return ''
@@ -272,15 +275,16 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
       
       if (isSuccess) {
         console.log('Update successful, calling onSuccess and closing modal')
+        addToast('Delivery challan updated successfully', 'success')
         onSuccess()
         handleClose()
       } else {
         console.error('API Error Response:', response)
-        alert(`Failed to update delivery challan: ${message}`)
+        addToast(`Failed to update delivery challan: ${message}`, 'error')
       }
     } catch (error) {
       console.error('Error updating delivery challan:', error)
-      alert('Failed to update delivery challan: ' + (error as Error).message)
+      addToast('Failed to update delivery challan: ' + (error as Error).message, 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -342,7 +346,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="to" className="block text-sm font-medium text-gray-700">
-                      Company *
+                      Company <span className="text-red-500">*</span>
                     </label>
                     <select
                       id="to"
@@ -368,7 +372,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
 
                   <div>
                     <label htmlFor="customer_id" className="block text-sm font-medium text-gray-700">
-                      Customer * {!formData.to && <span className="text-gray-400">(Select company first)</span>}
+                      Customer <span className="text-red-500">*</span> {!formData.to && <span className="text-gray-400">(Select company first)</span>}
                     </label>
                     <select
                       id="customer_id"
@@ -406,7 +410,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
 
                 <div>
                   <label htmlFor="part_id" className="block text-sm font-medium text-gray-700">
-                    Part * {!formData.customer_id && <span className="text-gray-400">(Select customer first)</span>}
+                    Part <span className="text-red-500">*</span> {!formData.customer_id && <span className="text-gray-400">(Select customer first)</span>}
                   </label>
                   <select
                     id="part_id"
@@ -447,7 +451,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
 
                 <div>
                   <label htmlFor="part_no" className="block text-sm font-medium text-gray-700">
-                    Part Number *
+                    Part Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -469,7 +473,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="challan_no" className="block text-sm font-medium text-gray-700">
-                      Challan Number *
+                      Challan Number <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -490,7 +494,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
 
                   <div>
                     <label htmlFor="from" className="block text-sm font-medium text-gray-700">
-                      From *
+                      From <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -513,7 +517,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="part_description" className="block text-sm font-medium text-gray-700">
-                      Part Description *
+                      Part Description <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -534,7 +538,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
 
                   <div>
                     <label htmlFor="hsn_code" className="block text-sm font-medium text-gray-700">
-                      HSN Code *
+                      HSN Code <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -552,7 +556,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
-                      Quantity *
+                      Quantity <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
@@ -574,7 +578,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
 
                   <div>
                     <label htmlFor="unit_rate" className="block text-sm font-medium text-gray-700">
-                      Unit Rate *
+                      Unit Rate <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -596,7 +600,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
 
                 <div>
                   <label htmlFor="total" className="block text-sm font-medium text-gray-700">
-                    Total Amount *
+                    Total Amount <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -617,7 +621,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
 
                 <div>
                   <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-                    Status *
+                    Status <span className="text-red-500">*</span>
                   </label>
                   <select
                     id="status"

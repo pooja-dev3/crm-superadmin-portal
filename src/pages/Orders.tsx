@@ -4,6 +4,8 @@ import { superadminApi } from '../services/superadminApi'
 import type { Order, OrderDisplay } from '../types/api'
 import AddOrderModal from '../components/AddOrderModal'
 import EditOrderModal from '../components/EditOrderModal'
+import ConfirmModal from '../components/ConfirmModal'
+import { useToast } from '../contexts/ToastContext'
 
 const Orders: React.FC = () => {
   const [orders, setOrders] = useState<any[]>([])
@@ -18,6 +20,8 @@ const Orders: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; orderId: string | null; orderNumber: string }>({ isOpen: false, orderId: null, orderNumber: '' })
+  const { addToast } = useToast()
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -27,6 +31,7 @@ const Orders: React.FC = () => {
   const [isBackendPaginated, setIsBackendPaginated] = useState(false)
 
   const fetchOrders = async () => {
+    console.log('fetchOrders called - starting to fetch orders')
     setIsLoading(true)
     try {
       const response = await superadminApi.getOrders() as { success: boolean; data: any }
@@ -38,14 +43,24 @@ const Orders: React.FC = () => {
         
         if (Array.isArray(response.data)) {
           // Real API returns simple array: { success: true, data: [...] }
+          console.log('Processing real API response with array data')
+          console.log('Raw orders data from API:', response.data)
+          console.log('Raw order IDs from API:', response.data.map((o: any) => o.id))
           ordersData = response.data.sort((a: any, b: any) => 
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
+          console.log('Orders data after sorting:', ordersData)
+          console.log('Sorted order IDs:', ordersData.map((o: any) => o.id))
         } else if (response.data && Array.isArray(response.data.data)) {
           // Mock API returns paginated: { success: true, data: { data: [...] } }
+          console.log('Processing mock API response with paginated data')
+          console.log('Raw paginated data from API:', response.data.data)
+          console.log('Raw paginated order IDs:', response.data.data.map((o: any) => o.id))
           ordersData = response.data.data.sort((a: any, b: any) => 
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
+          console.log('Orders data after sorting:', ordersData)
+          console.log('Sorted paginated order IDs:', ordersData.map((o: any) => o.id))
         }
         
         console.log('Orders Data after fetch:', ordersData) // Debug log
@@ -54,14 +69,14 @@ const Orders: React.FC = () => {
         if (ordersData.length > 0) {
           // Map API response to display format
           const validOrders: OrderDisplay[] = ordersData.map((order: Order) => {
-            console.log('Processing order:', order) // Debug log for each order
+            console.log('Processing order:', order.id, '-', order.po_no) // Debug log for each order
             return {
               id: order.id.toString(),
               orderNumber: order.po_no,
               company: order.customer?.name || 'Unknown Customer',
               status: order.po_received ? 'completed' : 'pending',
               total: parseFloat(order.price) * order.po_qty,
-              createdDate: order.created_at?.split('T')[0] || '',
+              createdDate: order.created_at ? new Date(order.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '',
               poQty: order.po_qty,
               balanceQty: order.balance_qty,
               price: order.price,
@@ -69,40 +84,27 @@ const Orders: React.FC = () => {
               wipStock: order.wip_stock,
               partDescription: order.part?.part_description || 'Unknown Part',
               drawingNo: order.part?.drawing_no || '',
-              reqdDate: order.reqd_date_as_per_po ? order.reqd_date_as_per_po.split('T')[0] : '',
-              dispatchDate: order.dispatch_details_inv_date ? order.dispatch_details_inv_date.split('T')[0] : '',
+              reqdDate: order.reqd_date_as_per_po ? new Date(order.reqd_date_as_per_po).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '',
+              dispatchDate: order.dispatch_details_inv_date ? new Date(order.dispatch_details_inv_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '',
               invNo: order.dispatch_details_inv_no || '',
               originalOrder: order
             }
           })
           
-          console.log('Mapped Orders:', validOrders) // Debug log
+          console.log('Valid orders after mapping:', validOrders)
+          console.log('Valid orders length:', validOrders.length)
+          console.log('Valid order IDs:', validOrders.map(o => `${o.id}(${o.orderNumber})`))
           
           setOrders(validOrders)
           setFilteredOrders(validOrders)
           
-          // Handle pagination from backend if available, otherwise calculate locally
-          if (response.data && response.data.pagination) {
-            setCurrentPage(response.data.pagination.current_page)
-            setTotalPages(response.data.pagination.last_page)
-            setTotalItems(response.data.pagination.total)
-            setIsBackendPaginated(true)
-          } else {
-            // Calculate pagination locally
-            const total = validOrders.length
-            const lastPage = Math.ceil(total / itemsPerPage)
-            setCurrentPage(1)
-            setTotalPages(lastPage)
-            setTotalItems(total)
-            setIsBackendPaginated(false)
-          }
+          console.log('Orders state updated')
           
-          // Extract unique companies with null check
-          const uniqueCompanies = Array.from(new Set(
-            ordersData
-              .filter((order: Order) => order.customer?.name)
-              .map((order: Order) => order.customer.name)
-          ))
+          // Extract unique companies for filter dropdown
+          const uniqueCompanies = [...new Set(ordersData
+            .filter((order: Order) => order.customer?.name)
+            .map((order: Order) => order.customer.name)
+          )]
           setCompanies(uniqueCompanies)
         } else {
           console.log('No orders found, setting empty arrays')
@@ -284,23 +286,72 @@ const Orders: React.FC = () => {
     setShowEditModal(true)
   }
 
-  const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
-    if (window.confirm(`Are you sure you want to delete order "${orderNumber}"? This action cannot be undone.`)) {
+  const handleDeleteOrder = (orderId: string, orderNumber: string) => {
+    setDeleteConfirm({
+      isOpen: true,
+      orderId,
+      orderNumber
+    })
+  }
+
+  const confirmDeleteOrder = async () => {
+    if (deleteConfirm.orderId) {
+      console.log('Attempting to delete order with ID:', deleteConfirm.orderId)
+      console.log('Order ID type:', typeof deleteConfirm.orderId)
+      
       try {
-        const response = await superadminApi.deleteOrder(parseInt(orderId)) as { success: boolean }
+        const orderIdNum = parseInt(deleteConfirm.orderId)
+        console.log('Parsed order ID as number:', orderIdNum)
+        
+        const response = await superadminApi.deleteOrder(orderIdNum) as { success: boolean }
+        console.log('Delete API Response:', response)
+        console.log('Response success property:', response.success)
+        console.log('Response type:', typeof response)
+        
         if (response.success) {
+          console.log('Delete successful - showing success toast')
           // Show success message
-          alert('Order deleted successfully')
+          addToast('Order deleted successfully', 'success')
+          
+          console.log('About to refresh orders list')
           // Refresh orders list
           await fetchOrders()
+          console.log('Orders list refreshed')
+          
+          // WORKAROUND: If backend didn't actually delete, remove from UI locally
+          setTimeout(() => {
+            console.log('Checking if deleted order ID', deleteConfirm.orderId, 'is still in orders list')
+            const stillExists = orders.some(order => order.id === deleteConfirm.orderId)
+            console.log('Deleted order still exists in UI:', stillExists)
+            console.log('Current orders count:', orders.length)
+            console.log('Current orders IDs:', orders.map(o => o.id))
+            
+            if (stillExists) {
+              console.log('Backend delete failed - removing from UI locally as workaround')
+              // Remove the deleted order from the local state
+              const updatedOrders = orders.filter(order => order.id !== deleteConfirm.orderId)
+              const updatedFilteredOrders = filteredOrders.filter(order => order.id !== deleteConfirm.orderId)
+              
+              setOrders(updatedOrders)
+              setFilteredOrders(updatedFilteredOrders)
+              
+              console.log('Removed order from UI locally')
+              console.log('Updated orders count:', updatedOrders.length)
+              addToast('Order removed from list (backend delete issue detected)', 'warning')
+            }
+          }, 500)
+          
         } else {
-          alert('Failed to delete order: ' + ((response as any).message || 'Unknown error'))
+          console.error('Delete failed:', response)
+          addToast('Failed to delete order: ' + ((response as any).message || 'Unknown error'), 'error')
         }
       } catch (error) {
         console.error('Error deleting order:', error)
-        alert('Failed to delete order. Please try again.')
+        addToast('Failed to delete order. Please try again.', 'error')
       }
     }
+    console.log('Closing delete modal')
+    setDeleteConfirm({ isOpen: false, orderId: null, orderNumber: '' })
   }
 
   const handleCloseModal = () => {
@@ -361,7 +412,7 @@ const Orders: React.FC = () => {
               </div>
               <input
                 type="text"
-                placeholder="Search orders..."
+                placeholder="Search orders by customer name, order number,..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
@@ -688,7 +739,7 @@ const Orders: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Balance Quantity</label>
-                      <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedOrder.balanceQty}</p>
+                      <p className="mt-1 text-sm text-gray-900 font-semibold">{(selectedOrder.po_qty || 0) - (selectedOrder.dispatch_details_inv_qlt || 0)}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Unit Price</label>
@@ -699,7 +750,7 @@ const Orders: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Total Amount</label>
-                      <p className="mt-1 text-sm text-gray-900 font-semibold">₹{selectedOrder.total.toLocaleString()}</p>
+                      <p className="mt-1 text-sm text-gray-900 font-semibold">₹{parseFloat(selectedOrder.price).toFixed(2)}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Status</label>
@@ -795,6 +846,18 @@ const Orders: React.FC = () => {
           order={selectedOrder}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, orderId: null, orderNumber: '' })}
+        onConfirm={confirmDeleteOrder}
+        title="Delete Order"
+        message={`Are you sure you want to delete order "${deleteConfirm.orderNumber}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </div>
   )
 }

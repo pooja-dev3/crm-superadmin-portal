@@ -7,6 +7,7 @@ import type { Order, PartWithCustomer, DeliveryChallan } from '../types/api'
 import type { Admin } from '../services/admin'
 import type { Customer } from '../services/customers'
 import EditCompanyModal from '../components/EditCompanyModal'
+import { useToast } from '../contexts/ToastContext'
 
 interface CompanyFormData {
   comp_name: string
@@ -24,6 +25,7 @@ const CompanyDetail: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'customers' | 'orders' | 'challans' | 'parts' | 'supervisors' | 'operators'>('overview')
+  const { addToast } = useToast()
   
   // Additional data states - use correct types
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -644,10 +646,13 @@ const CompanyDetail: React.FC = () => {
         setShowEditModal(false)
         // Refresh company data
         await fetchCompany(company.id.toString())
+        addToast('Company updated successfully', 'success')
+      } else {
+        addToast('Failed to update company', 'error')
       }
     } catch (error) {
       console.error('Error updating company:', error)
-      alert('Failed to update company')
+      addToast('Failed to update company', 'error')
     }
   }
 
@@ -664,10 +669,13 @@ const CompanyDetail: React.FC = () => {
         if (response.success) {
           // Refresh company data
           await fetchCompany(company.id.toString())
+          addToast(`Company ${company.is_active ? 'deactivated' : 'activated'} successfully`, 'success')
+        } else {
+          addToast('Failed to update company status', 'error')
         }
       } catch (error) {
         console.error('Error updating company status:', error)
-        alert('Failed to update company status')
+        addToast('Failed to update company status', 'error')
       }
     }
   }

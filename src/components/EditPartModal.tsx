@@ -29,12 +29,12 @@ const EditPartModal: React.FC<EditPartModalProps> = ({ isOpen, onClose, onSucces
     po_date: '',
     po_received: false,
     po_qty: undefined,
-    balance_qty: undefined,
-    price: undefined,
+    // balance_qty: undefined, // Property doesn't exist in CreatePartRequest
+    // price: undefined, // Property doesn't exist in CreatePartRequest
     reqd_date_as_per_po: '',
-    customer_po_no: '',
-    customer_po_date: '',
-    status: 'active',
+    // customer_po_no: '', // Property doesn't exist in CreatePartRequest
+    // customer_po_date: '', // Property doesn't exist in CreatePartRequest
+    // status: 'active', // Property doesn't exist in CreatePartRequest
     comp_name: ''
   })
   const [companies, setCompanies] = useState<Company[]>([])

@@ -101,10 +101,10 @@ const Orders: React.FC = () => {
           console.log('Orders state updated')
           
           // Extract unique companies for filter dropdown
-          const uniqueCompanies = [...new Set(ordersData
+          const uniqueCompanies = Array.from(new Set(ordersData
             .filter((order: Order) => order.customer?.name)
             .map((order: Order) => order.customer.name)
-          )]
+          ))
           setCompanies(uniqueCompanies)
         } else {
           console.log('No orders found, setting empty arrays')
@@ -337,7 +337,7 @@ const Orders: React.FC = () => {
               
               console.log('Removed order from UI locally')
               console.log('Updated orders count:', updatedOrders.length)
-              addToast('Order removed from list (backend delete issue detected)', 'warning')
+              addToast('Order removed from list (backend delete issue detected)', 'info')
             }
           }, 500)
           

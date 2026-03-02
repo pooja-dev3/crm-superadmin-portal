@@ -66,8 +66,11 @@ export interface CreateDeliveryChallanRequest {
   quantity: number
   unit_rate: string
   total: string
+  inward: number
   notes: string | null
   signature: string | null
+  comp_name: string
+  nature_of_processing: string
 }
 
 export interface UpdateDeliveryChallanRequest {

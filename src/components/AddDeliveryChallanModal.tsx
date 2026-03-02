@@ -16,9 +16,12 @@ interface DeliveryChallanErrors {
   quantity?: string
   unit_rate?: string
   total?: string
+  inward?: string
   notes?: string
   signature?: string
   customer_id?: string
+  comp_name?: string
+  nature_of_processing?: string
 }
 
 interface AddDeliveryChallanModalProps {
@@ -41,8 +44,11 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
     quantity: 1,
     unit_rate: '0.00',
     total: '0.00',
+    inward: 0,
     notes: null,
-    signature: null
+    signature: null,
+    comp_name: '',
+    nature_of_processing: ''
   })
   const [companies, setCompanies] = useState<any[]>([])
   const [parts, setParts] = useState<any[]>([])
@@ -176,8 +182,8 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
     const { name, value, type } = e.target
     let processedValue: string | number | null = value
     
-    // Convert to number for quantity and customer_id fields
-    if (name === 'quantity' && type === 'number') {
+    // Convert to number for quantity, inward and customer_id fields
+    if ((name === 'quantity' || name === 'inward') && type === 'number') {
       processedValue = value === '' ? 0 : Number(value)
     } else if (name === 'customer_id') {
       processedValue = value === '' ? null : Number(value)
@@ -237,6 +243,12 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
     if (!formData.total.trim()) {
       newErrors.total = 'Total is required'
     }
+    if (!formData.comp_name.trim()) {
+      newErrors.comp_name = 'Company name is required'
+    }
+    if (!formData.nature_of_processing.trim()) {
+      newErrors.nature_of_processing = 'Nature of processing is required'
+    }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -291,8 +303,11 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
       quantity: 1,
       unit_rate: '0.00',
       total: '0.00',
+      inward: 0,
       notes: null,
-      signature: null
+      signature: null,
+      comp_name: '',
+      nature_of_processing: ''
     })
     setErrors({})
     onClose()
@@ -593,6 +608,72 @@ const AddDeliveryChallanModal: React.FC<AddDeliveryChallanModalProps> = ({ isOpe
                     />
                     {errors.unit_rate && (
                       <p className="mt-1 text-sm text-red-600">{errors.unit_rate}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label htmlFor="inward" className="block text-sm font-medium text-gray-700">
+                      Inward Quantity
+                    </label>
+                    <input
+                      type="number"
+                      id="inward"
+                      name="inward"
+                      value={formData.inward}
+                      onChange={handleChange}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                        errors.inward ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter inward quantity"
+                      min="0"
+                      disabled={isSubmitting}
+                    />
+                    {errors.inward && (
+                      <p className="mt-1 text-sm text-red-600">{errors.inward}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="comp_name" className="block text-sm font-medium text-gray-700">
+                      Company Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="comp_name"
+                      name="comp_name"
+                      value={formData.comp_name}
+                      onChange={handleChange}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                        errors.comp_name ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter company name"
+                      disabled={isSubmitting}
+                    />
+                    {errors.comp_name && (
+                      <p className="mt-1 text-sm text-red-600">{errors.comp_name}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="nature_of_processing" className="block text-sm font-medium text-gray-700">
+                      Nature of Processing <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="nature_of_processing"
+                      name="nature_of_processing"
+                      value={formData.nature_of_processing}
+                      onChange={handleChange}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
+                        errors.nature_of_processing ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                      placeholder="Enter nature of processing"
+                      disabled={isSubmitting}
+                    />
+                    {errors.nature_of_processing && (
+                      <p className="mt-1 text-sm text-red-600">{errors.nature_of_processing}</p>
                     )}
                   </div>
                 </div>

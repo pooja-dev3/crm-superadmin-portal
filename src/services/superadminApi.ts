@@ -57,8 +57,18 @@ export const superadminApi = {
   getDeliveryChallansByPart: (partId: number) => apiClient.get(`/superadmin/delivery-challans/by-part?part_id=${partId}`),
 
   // Authentication
-  login: (credentials: { email: string; password: string }) => 
+  login: (credentials: { email: string; password: string }) =>
     apiClient.post('/auth/login', credentials),
   getMe: () => apiClient.get('/auth/me'),
   logout: () => apiClient.post('/auth/logout'),
+
+  // Roles Management
+  getRoles: () => apiClient.get('/superadmin/roles'),
+
+  // Permissions Management
+  getPermissions: () => apiClient.get('/superadmin/permissions'),
+
+  // Security Settings
+  getSecuritySettings: () => apiClient.get('/superadmin/settings/security'),
+  updateSecuritySettings: (data: any) => apiClient.put('/superadmin/settings/security', data),
 }

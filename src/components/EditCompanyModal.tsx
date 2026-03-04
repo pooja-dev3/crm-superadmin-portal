@@ -18,11 +18,11 @@ interface CompanyFormData {
   is_active: boolean
 }
 
-const EditCompanyModal: React.FC<EditCompanyModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSubmit, 
-  company 
+const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  company
 }) => {
   const [formData, setFormData] = useState<CompanyFormData>({
     comp_name: '',
@@ -50,9 +50,9 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value 
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }))
     // Clear error when user starts typing
     if (errors[name as keyof CompanyFormData]) {
@@ -62,7 +62,7 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
 
   const validateForm = (): boolean => {
     const newErrors: Partial<CompanyFormData> = {}
-    
+
     // Company Name validation
     if (!formData.comp_name.trim()) {
       newErrors.comp_name = 'Company name is required'
@@ -73,7 +73,7 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
     } else if (!/^[a-zA-Z0-9\s&.,'-]+$/.test(formData.comp_name.trim())) {
       newErrors.comp_name = 'Company name contains invalid characters'
     }
-    
+
     // Email validation
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required'
@@ -82,7 +82,7 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
     } else if (formData.email.trim().length > 255) {
       newErrors.email = 'Email must be less than 255 characters'
     }
-    
+
     // Phone validation
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required'
@@ -93,7 +93,7 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
     } else if (formData.phone.replace(/\D/g, '').length > 15) {
       newErrors.phone = 'Phone number must be less than 15 digits'
     }
-    
+
     // Address validation
     if (!formData.address.trim()) {
       newErrors.address = 'Address is required'
@@ -102,7 +102,7 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
     } else if (formData.address.trim().length > 500) {
       newErrors.address = 'Address must be less than 500 characters'
     }
-    
+
     // GST Number validation
     if (!formData.gst_no.trim()) {
       newErrors.gst_no = 'GST number is required'
@@ -144,154 +144,156 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-          <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={onClose}></div>
-        </div>
+        <div
+          className="fixed inset-0 bg-gray-500 opacity-75 transition-opacity"
+          aria-hidden="true"
+          onClick={onClose}
+        ></div>
+
+        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
         <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">
-                Edit Company
-              </h3>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
+          <form onSubmit={handleSubmit}>
+            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  Edit Company
+                </h3>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="comp_name" className="block text-sm font-medium text-gray-700">
+                    Company Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="comp_name"
+                    name="comp_name"
+                    value={formData.comp_name}
+                    onChange={handleInputChange}
+                    disabled
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.comp_name ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                    placeholder="Enter company name"
+                  />
+                  {errors.comp_name && (
+                    <p className="mt-1 text-sm text-red-600">{errors.comp_name}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.email ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                    placeholder="company@example.com"
+                  />
+                  {errors.email && (
+                    <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                    Address <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="address"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    placeholder="Enter company address"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                    Phone <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.phone ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                    placeholder="+1-555-0123"
+                  />
+                  {errors.phone && (
+                    <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="gst_no" className="block text-sm font-medium text-gray-700">
+                    GST Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="gst_no"
+                    name="gst_no"
+                    value={formData.gst_no}
+                    onChange={handleInputChange}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.gst_no ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                    placeholder="GST1234567890"
+                  />
+                  {errors.gst_no && (
+                    <p className="mt-1 text-sm text-red-600">{errors.gst_no}</p>
+                  )}
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="is_active"
+                    name="is_active"
+                    checked={formData.is_active}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 text-blue-900 focus:ring-blue-900 border-gray-300 rounded"
+                  />
+                  <label htmlFor="is_active" className="ml-2 block text-sm text-gray-900">
+                    Active Company
+                  </label>
+                </div>
+              </div>
             </div>
 
-            <form id="edit-company-form" onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="comp_name" className="block text-sm font-medium text-gray-700">
-                  Company Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="comp_name"
-                  name="comp_name"
-                  value={formData.comp_name}
-                  onChange={handleInputChange}
-                  disabled
-                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                    errors.comp_name ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter company name"
-                />
-                {errors.comp_name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.comp_name}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                    errors.email ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="company@example.com"
-                />
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                  Address <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
-                  placeholder="Enter company address"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                  Phone <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                    errors.phone ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="+1-555-0123"
-                />
-                {errors.phone && (
-                  <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="gst_no" className="block text-sm font-medium text-gray-700">
-                  GST Number <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="gst_no"
-                  name="gst_no"
-                  value={formData.gst_no}
-                  onChange={handleInputChange}
-                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                    errors.gst_no ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="GST1234567890"
-                />
-                {errors.gst_no && (
-                  <p className="mt-1 text-sm text-red-600">{errors.gst_no}</p>
-                )}
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="is_active"
-                  name="is_active"
-                  checked={formData.is_active}
-                  onChange={handleInputChange}
-                  className="h-4 w-4 text-blue-900 focus:ring-blue-900 border-gray-300 rounded"
-                />
-                <label htmlFor="is_active" className="ml-2 block text-sm text-gray-900">
-                  Active Company
-                </label>
-              </div>
-            </form>
-          </div>
-
-          <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button
-              type="submit"
-              form="edit-company-form"
-              disabled={isSubmitting}
-              className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-900 text-base font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-            >
-              {isSubmitting ? 'Updating...' : 'Update Company'}
-            </button>
-            <button
-              type="button"
-              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-              onClick={handleClose}
-            >
-              Cancel
-            </button>
-          </div>
+            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-900 text-base font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+              >
+                {isSubmitting ? 'Updating...' : 'Update Company'}
+              </button>
+              <button
+                type="button"
+                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                onClick={handleClose}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

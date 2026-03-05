@@ -44,7 +44,7 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
   const handleCompanyChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const companyId = e.target.value
     const company = companies.find(c => c.id.toString() === companyId)
-    
+
     if (company) {
       setSelectedCompany(company)
       setFormData((prev) => ({
@@ -109,14 +109,11 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
     }
 
     // Phone validation
+    const phoneClean = formData.phone?.trim().replace(/\s/g, '')
     if (!formData.phone?.trim()) {
       newErrors.phone = 'Phone is required'
-    } else if (!/^[+]?[\d\s\-\(\)]{10,}$/.test(formData.phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Invalid phone number format'
-    } else if (formData.phone.replace(/\D/g, '').length < 10) {
-      newErrors.phone = 'Phone number must be at least 10 digits'
-    } else if (formData.phone.replace(/\D/g, '').length > 15) {
-      newErrors.phone = 'Phone number must be less than 15 digits'
+    } else if (!/^(?:\+91|91|0)?[6-9]\d{9}$/.test(phoneClean)) {
+      newErrors.phone = 'Please enter a valid Indian phone number (e.g. +91 9876543210)'
     }
 
     // Role validation
@@ -154,7 +151,7 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
@@ -171,7 +168,7 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
         comp_name: selectedCompany?.comp_name || '', // Send company name instead of code
         comp_code: formData.comp_code
       }
-      
+
       const response = await superadminApi.updateCompanyUser(admin.id, updateData) as ApiResponse<any>
       if (response.success) {
         // If new password is provided, reset it
@@ -237,9 +234,8 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                    errors.name ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.name ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   disabled={isLoading}
                 />
                 {errors.name && (
@@ -256,9 +252,8 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                    errors.email ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.email ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   disabled={isLoading}
                 />
                 {errors.email && (
@@ -275,9 +270,8 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                    errors.phone ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.phone ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   disabled={isLoading}
                 />
                 {errors.phone && (
@@ -292,9 +286,8 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
                 <select
                   value={selectedCompany?.id || ''}
                   onChange={handleCompanyChange}
-                  className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                    errors.comp_code ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.comp_code ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   disabled={isLoading}
                 >
                   <option value="">Select Company</option>
@@ -323,9 +316,8 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
-                  className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                    errors.role ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.role ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   disabled={isLoading}
                 >
                   <option value="">Select Role</option>
@@ -369,9 +361,8 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
                       value={newPassword}
                       onChange={handlePasswordChange}
                       placeholder="Enter new password"
-                      className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 pr-10 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.newPassword ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 pr-10 focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.newPassword ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       disabled={isLoading}
                     />
                     <button

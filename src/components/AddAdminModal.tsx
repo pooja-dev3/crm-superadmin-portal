@@ -45,7 +45,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
   const handleCompanyChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const companyId = e.target.value
     const company = companies.find(c => c.id.toString() === companyId)
-    
+
     if (company) {
       setSelectedCompany(company)
       setFormData((prev) => ({
@@ -74,7 +74,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
       console.log('Fetching companies from API...')
       const response = await superadminApi.getCompanies() as ApiResponse<any[]>
       console.log('Companies API response:', response)
-      
+
       if (response.success && Array.isArray(response.data)) {
         const companiesData = response.data
         console.log('Companies data extracted:', companiesData)
@@ -115,14 +115,11 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
     }
 
     // Phone validation
+    const phoneClean = formData.phone.trim().replace(/\s/g, '')
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone is required'
-    } else if (!/^[+]?[\d\s\-\(\)]{10,}$/.test(formData.phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Invalid phone number format'
-    } else if (formData.phone.replace(/\D/g, '').length < 10) {
-      newErrors.phone = 'Phone number must be at least 10 digits'
-    } else if (formData.phone.replace(/\D/g, '').length > 15) {
-      newErrors.phone = 'Phone number must be less than 15 digits'
+    } else if (!/^(?:\+91|91|0)?[6-9]\d{9}$/.test(phoneClean)) {
+      newErrors.phone = 'Please enter a valid Indian phone number (e.g. +91 9876543210)'
     }
 
     // Role validation
@@ -167,7 +164,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
@@ -185,7 +182,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
         password_confirmation: formData.password_confirmation,
         is_active: formData.is_active
       }
-      
+
       const response = await superadminApi.createCompanyUser(createData) as ApiResponse<any>
       if (response.success) {
         addToast('Admin created successfully', 'success')
@@ -226,7 +223,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
     <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={handleClose} />
-        
+
         <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto scrollbar-hide">
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
@@ -255,9 +252,8 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${
-                    errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
+                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
                   disabled={isLoading}
                   placeholder="Enter full name"
                 />
@@ -278,9 +274,8 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${
-                    errors.email ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
+                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${errors.email ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
                   disabled={isLoading}
                   placeholder="admin@example.com"
                 />
@@ -301,11 +296,10 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${
-                    errors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
+                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${errors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
                   disabled={isLoading}
-                  placeholder="+1234567890"
+                  placeholder="+91 98765 43210"
                 />
                 {errors.phone && (
                   <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -322,9 +316,8 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
                 <select
                   value={selectedCompany?.id || ''}
                   onChange={handleCompanyChange}
-                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${
-                    errors.comp_code ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
+                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${errors.comp_code ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
                   disabled={isLoading || isLoadingCompanies}
                 >
                   <option value="">Select Company</option>
@@ -357,9 +350,8 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
-                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${
-                    errors.role ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
+                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${errors.role ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
                   disabled={isLoading}
                 >
                   <option value="">Select Role</option>
@@ -385,9 +377,8 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${
-                      errors.password ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                    }`}
+                    className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${errors.password ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
                     disabled={isLoading}
                     placeholder="Min. 6 characters"
                   />
@@ -421,9 +412,8 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
                     name="password_confirmation"
                     value={formData.password_confirmation}
                     onChange={handleChange}
-                    className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${
-                      errors.password_confirmation ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                    }`}
+                    className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${errors.password_confirmation ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
                     disabled={isLoading}
                     placeholder="Re-enter password"
                   />

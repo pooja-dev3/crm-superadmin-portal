@@ -76,14 +76,11 @@ const AddCompanyModal: React.FC<AddCompanyModalProps> = ({ isOpen, onClose, onSu
     }
 
     // Phone validation
+    const phoneClean = formData.phone.trim().replace(/\s/g, '')
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required'
-    } else if (!/^[+]?[\d\s\-\(\)]{10,}$/.test(formData.phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Invalid phone number format'
-    } else if (formData.phone.replace(/\D/g, '').length < 10) {
-      newErrors.phone = 'Phone number must be at least 10 digits'
-    } else if (formData.phone.replace(/\D/g, '').length > 15) {
-      newErrors.phone = 'Phone number must be less than 15 digits'
+    } else if (!/^(?:\+91|91|0)?[6-9]\d{9}$/.test(phoneClean)) {
+      newErrors.phone = 'Please enter a valid Indian phone number (e.g. +91 9876543210)'
     }
 
     // Address validation
@@ -244,7 +241,7 @@ const AddCompanyModal: React.FC<AddCompanyModalProps> = ({ isOpen, onClose, onSu
                     onChange={handleInputChange}
                     className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.phone ? 'border-red-300' : 'border-gray-300'
                       }`}
-                    placeholder="+1-555-0123"
+                    placeholder="+91 98765 43210"
                   />
                   {errors.phone && (
                     <p className="mt-1 text-sm text-red-600">{errors.phone}</p>

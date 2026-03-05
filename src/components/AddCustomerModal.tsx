@@ -80,6 +80,11 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
     }
     if (!formData.contact_no.trim()) {
       newErrors.contact_no = 'Contact number is required'
+    } else {
+      const contactClean = formData.contact_no.trim().replace(/\s/g, '')
+      if (!/^(?:\+91|91|0)?[6-9]\d{9}$/.test(contactClean)) {
+        newErrors.contact_no = 'Please enter a valid Indian phone number (e.g. +91 9876543210)'
+      }
     }
     if (!formData.gst_no.trim()) {
       newErrors.gst_no = 'GST number is required'
@@ -94,7 +99,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) return
 
     setIsSubmitting(true)
@@ -129,7 +134,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div 
+        <div
           className="fixed inset-0 transition-opacity"
           aria-hidden="true"
           onClick={handleClose}
@@ -152,7 +157,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
                   <X className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 {/* Step 1: Company Selection */}
                 <div>
@@ -164,9 +169,8 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
                     name="company"
                     value={formData.comp_name}
                     onChange={handleCompanyChange}
-                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.comp_name ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.comp_name ? 'border-red-300' : 'border-gray-300'
+                      }`}
                   >
                     <option value="">Select a company</option>
                     {companies.length > 0 ? (
@@ -195,9 +199,8 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.name ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.name ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="Enter customer name"
                   />
                   {errors.name && (
@@ -215,9 +218,8 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
                     value={formData.address}
                     onChange={handleInputChange}
                     rows={3}
-                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.address ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.address ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="Enter complete address"
                   />
                   {errors.address && (
@@ -235,10 +237,9 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
                     name="contact_no"
                     value={formData.contact_no}
                     onChange={handleInputChange}
-                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.contact_no ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter contact number"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.contact_no ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                    placeholder="+91 98765 43210"
                   />
                   {errors.contact_no && (
                     <p className="mt-1 text-sm text-red-600">{errors.contact_no}</p>
@@ -255,9 +256,8 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
                     name="gst_no"
                     value={formData.gst_no}
                     onChange={handleInputChange}
-                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.gst_no ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.gst_no ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="Enter GST number"
                   />
                   {errors.gst_no && (
@@ -282,7 +282,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
               <button
                 type="submit"

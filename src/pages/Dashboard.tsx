@@ -6,32 +6,27 @@ import {
   XCircle,
   ShoppingCart,
   FileText,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
   Activity,
   Users,
   BarChart3,
-  PieChart,
   Calendar,
-  Zap
+  Zap,
+  Package,
+  Shield,
+  UserCheck,
+  HardHat,
+  Wrench,
+  ArrowRight,
+  Clock
 } from 'lucide-react'
 import { superadminApi } from '../services/superadminApi'
 import LoadingSpinner from '../components/common/LoadingSpinner'
 import type { DashboardResponse, DashboardStats } from '../types/api'
 
-
 interface ChartData {
   labels: string[]
   values: number[]
   colors?: string[]
-}
-
-interface RevenueData {
-  month: string
-  revenue: number
-  orders: number
-  growth: number
 }
 
 const Dashboard: React.FC = () => {
@@ -51,53 +46,45 @@ const Dashboard: React.FC = () => {
       operator: 0
     }
   })
-  const [companyGrowthData, setCompanyGrowthData] = useState<ChartData>({ labels: [], values: [] })
   const [isLoading, setIsLoading] = useState(true)
+  const [recentActivities, setRecentActivities] = useState<any[]>([])
+  const [currentTime, setCurrentTime] = useState(new Date())
 
   const navigate = useNavigate()
 
-  const handleAddCompany = () => {
-    navigate('/companies')
-  }
+  // Live clock
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
-  const handleViewReports = () => {
-    navigate('/reports')
-  }
-
-  const [recentActivities, setRecentActivities] = useState<any[]>([])
-
-  // Fetch real recent activities from existing APIs
+  // Fetch recent activities
   const fetchRecentActivities = async () => {
     try {
-      // Fetch latest data from different APIs concurrently
       const [companiesRes, ordersRes, customersRes] = await Promise.allSettled([
         superadminApi.getCompanies(1),
         superadminApi.getOrders(),
         superadminApi.getCustomers()
-      ]);
+      ])
 
-      const activities: any[] = [];
+      const activities: any[] = []
 
-      // Helper function for relative time
       const getRelativeTime = (dateString: string) => {
-        if (!dateString) return 'Recently';
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+        if (!dateString) return 'Recently'
+        const date = new Date(dateString)
+        const now = new Date()
+        const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+        if (diffInSeconds < 60) return `${diffInSeconds}s ago`
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+        return `${Math.floor(diffInSeconds / 86400)}d ago`
+      }
 
-        if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
-        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-        return `${Math.floor(diffInSeconds / 86400)} days ago`;
-      };
-
-      // Process companies
       if (companiesRes.status === 'fulfilled' && (companiesRes.value as any).success) {
-        const responseData = (companiesRes.value as any).data;
-        const companies = Array.isArray(responseData) ? responseData : (responseData?.data || []);
-
+        const responseData = (companiesRes.value as any).data
+        const companies = Array.isArray(responseData) ? responseData : (responseData?.data || [])
         companies.slice(0, 5).forEach((company: any) => {
-          const dateStr = company.created_at || new Date().toISOString();
+          const dateStr = company.created_at || new Date().toISOString()
           activities.push({
             id: `comp-${company.id}`,
             type: 'company',
@@ -106,84 +93,62 @@ const Dashboard: React.FC = () => {
             time: getRelativeTime(dateStr),
             timestamp: new Date(dateStr).getTime(),
             status: company.status === 'active' || company.is_active ? 'success' : 'pending',
-            icon: 'Building2',
-            color: 'text-green-600'
-          });
-        });
+          })
+        })
       }
 
-      // Process orders
       if (ordersRes.status === 'fulfilled' && (ordersRes.value as any).success) {
-        const orders = Array.isArray((ordersRes.value as any).data) ? (ordersRes.value as any).data : [];
+        const orders = Array.isArray((ordersRes.value as any).data) ? (ordersRes.value as any).data : []
         orders.slice(0, 5).forEach((order: any) => {
-          const dateStr = order.orderDate || order.created_at || new Date().toISOString();
+          const dateStr = order.orderDate || order.created_at || new Date().toISOString()
           activities.push({
             id: `order-${order.id}`,
             type: 'order',
             title: 'Order Placed',
-            description: `Order #${order.orderNumber || order.po_no || order.id} created`,
+            description: `PO #${order.po_no || order.id} has been created`,
             time: getRelativeTime(dateStr),
             timestamp: new Date(dateStr).getTime(),
-            status: order.status === 'completed' ? 'completed' : 'in_transit',
-            icon: 'ShoppingCart',
-            color: 'text-blue-600',
-            amount: order.totalAmount ? `₹${Number(order.totalAmount).toFixed(2)}` : undefined
-          });
-        });
+            status: order.po_received ? 'completed' : 'pending',
+            amount: order.price ? `₹${Number(order.price).toLocaleString()}` : undefined
+          })
+        })
       }
 
-      // Process customers
       if (customersRes.status === 'fulfilled' && (customersRes.value as any).success) {
-        const customers = Array.isArray((customersRes.value as any).data) ? (customersRes.value as any).data : [];
+        const customers = Array.isArray((customersRes.value as any).data) ? (customersRes.value as any).data : []
         customers.slice(0, 5).forEach((customer: any) => {
-          const dateStr = customer.created_at || new Date().toISOString();
+          const dateStr = customer.created_at || new Date().toISOString()
           activities.push({
             id: `cust-${customer.id}`,
             type: 'customer',
             title: 'New Customer Added',
-            description: `${customer.customerName || customer.name || 'A customer'} registered successfully`,
+            description: `${customer.name || 'A customer'} registered successfully`,
             time: getRelativeTime(dateStr),
             timestamp: new Date(dateStr).getTime(),
             status: 'success',
-            icon: 'Users',
-            color: 'text-purple-600'
-          });
-        });
+          })
+        })
       }
 
-      // Sort by timestamp descending (newest first)
-      activities.sort((a, b) => b.timestamp - a.timestamp);
-
-      // Take the top 5 most recent activities overall
-      setRecentActivities(activities.slice(0, 5));
+      activities.sort((a, b) => b.timestamp - a.timestamp)
+      setRecentActivities(activities.slice(0, 6))
     } catch (error) {
-      console.error('Error fetching recent activities from APIs:', error);
-      setRecentActivities([]);
+      console.error('Error fetching recent activities:', error)
+      setRecentActivities([])
     }
   }
 
   useEffect(() => {
-    fetchRecentActivities();
-  }, []);
-
-  const handleViewAllActivities = () => {
-    navigate('/activities')
-  }
-
-  const handleProcessOrders = () => {
-    navigate('/orders')
-  }
+    fetchRecentActivities()
+  }, [])
 
   useEffect(() => {
-    // Fetch real data from superadmin dashboard API
     const fetchStats = async () => {
       try {
         const dashboardResponse = await superadminApi.getDashboard() as DashboardResponse
-
         if (dashboardResponse.success && dashboardResponse.data) {
           const { summary, role_summary } = dashboardResponse.data
-
-          const realStats: DashboardStats = {
+          setStats({
             totalCompanies: summary.total_companies || 0,
             totalCompanyUsers: summary.total_company_users || 0,
             totalCustomers: summary.total_customers || 0,
@@ -198,59 +163,14 @@ const Dashboard: React.FC = () => {
               supervisor: role_summary?.supervisor || 0,
               operator: role_summary?.operator || 0
             }
-          }
-
-          setStats(realStats)
-        } else {
-          // Fallback to mock data if API fails
-          const fallbackStats: DashboardStats = {
-            totalCompanies: 18,
-            totalCompanyUsers: 32,
-            totalCustomers: 6,
-            totalParts: 6,
-            totalOrders: 9,
-            totalDeliveryChallans: 3,
-            systemHealth: 98.7,
-            activeUsers: 32,
-            roleSummary: {
-              superadmin: 1,
-              admin: 8,
-              supervisor: 11,
-              operator: 13
-            }
-          }
-          setStats(fallbackStats)
+          })
         }
-
-        const mockRevenueData: RevenueData[] = [
-          { month: 'Jan', revenue: 35000, orders: 95, growth: 8.2 },
-          { month: 'Feb', revenue: 42000, orders: 110, growth: 20.0 },
-          { month: 'Mar', revenue: 38000, orders: 105, growth: -9.5 },
-          { month: 'Apr', revenue: 51000, orders: 135, growth: 34.2 },
-          { month: 'May', revenue: 47000, orders: 125, growth: -7.8 },
-          { month: 'Jun', revenue: 72000, orders: 180, growth: 53.2 },
-          { month: 'Jul', revenue: 68000, orders: 175, growth: -5.6 },
-          { month: 'Aug', revenue: 75000, orders: 190, growth: 10.3 },
-          { month: 'Sep', revenue: 71000, orders: 185, growth: -5.3 },
-          { month: 'Oct', revenue: 78000, orders: 195, growth: 9.9 },
-          { month: 'Nov', revenue: 82000, orders: 205, growth: 5.1 },
-          { month: 'Dec', revenue: 89000, orders: 220, growth: 8.5 }
-        ]
-
-        const mockCompanyGrowth: ChartData = {
-          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-          values: [25, 32, 28, 45, 38, 52, 48, 65, 58, 72, 68, 85],
-          colors: ['#1e40af', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa', '#3b82f6', '#1e40af', '#1e3a8a']
-        }
-
-        setCompanyGrowthData(mockCompanyGrowth)
       } catch (error) {
         console.error('Error fetching dashboard stats:', error)
       } finally {
         setIsLoading(false)
       }
     }
-
     fetchStats()
   }, [])
 
@@ -259,57 +179,118 @@ const Dashboard: React.FC = () => {
       title: 'Total Companies',
       value: stats.totalCompanies,
       icon: Building2,
-      color: 'text-blue-600',
-      bgColor: 'bg-gradient-to-r from-blue-500 to-blue-600',
-      trend: 8.3,
-      trendLabel: 'new this month'
+      gradient: 'from-blue-600 to-blue-500',
+      bg: 'bg-blue-50',
+      text: 'text-blue-600',
+      label: 'Registered companies',
+      onClick: () => navigate('/companies')
     },
     {
       title: 'Total Customers',
       value: stats.totalCustomers,
       icon: Users,
-      color: 'text-purple-600',
-      bgColor: 'bg-gradient-to-r from-purple-500 to-purple-600',
-      trend: 15.2,
-      trendLabel: 'vs last week'
+      gradient: 'from-purple-600 to-purple-500',
+      bg: 'bg-purple-50',
+      text: 'text-purple-600',
+      label: 'Active customers',
+      onClick: () => navigate('/customers')
     },
     {
-      title: 'System Health',
-      value: `${stats.systemHealth}%`,
-      icon: Activity,
-      color: 'text-emerald-600',
-      bgColor: 'bg-gradient-to-r from-emerald-500 to-emerald-600',
-      trend: 0.5,
-      trendLabel: 'uptime score'
+      title: 'Active Users',
+      value: stats.totalCompanyUsers,
+      icon: UserCheck,
+      gradient: 'from-emerald-600 to-emerald-500',
+      bg: 'bg-emerald-50',
+      text: 'text-emerald-600',
+      label: 'Across all companies',
+      onClick: () => navigate('/company-admins')
     },
     {
       title: 'Total Parts',
       value: stats.totalParts,
-      icon: FileText,
-      color: 'text-orange-600',
-      bgColor: 'bg-gradient-to-r from-orange-500 to-orange-600',
-      trend: 5.2,
-      trendLabel: 'vs last month'
+      icon: Package,
+      gradient: 'from-orange-600 to-orange-500',
+      bg: 'bg-orange-50',
+      text: 'text-orange-600',
+      label: 'Parts in catalogue',
+      onClick: () => navigate('/parts')
     },
     {
       title: 'Total Orders',
       value: stats.totalOrders,
       icon: ShoppingCart,
-      color: 'text-indigo-600',
-      bgColor: 'bg-gradient-to-r from-indigo-500 to-indigo-600',
-      trend: 12.8,
-      trendLabel: 'this month'
+      gradient: 'from-indigo-600 to-indigo-500',
+      bg: 'bg-indigo-50',
+      text: 'text-indigo-600',
+      label: 'Orders processed',
+      onClick: () => navigate('/orders')
     },
     {
       title: 'Delivery Challans',
       value: stats.totalDeliveryChallans,
       icon: FileText,
-      color: 'text-green-600',
-      bgColor: 'bg-gradient-to-r from-green-500 to-green-600',
-      trend: 8.5,
-      trendLabel: 'this month'
+      gradient: 'from-rose-600 to-rose-500',
+      bg: 'bg-rose-50',
+      text: 'text-rose-600',
+      label: 'Challans issued',
+      onClick: () => navigate('/delivery-challans')
     }
   ]
+
+  const quickActions = [
+    {
+      label: 'Add New Company',
+      desc: 'Register a new company account',
+      icon: Building2,
+      color: 'text-blue-600',
+      border: 'border-blue-100',
+      hover: 'hover:border-blue-300 hover:bg-blue-50',
+      onClick: () => navigate('/companies')
+    },
+    {
+      label: 'View Reports',
+      desc: 'Generate system analytics',
+      icon: BarChart3,
+      color: 'text-emerald-600',
+      border: 'border-emerald-100',
+      hover: 'hover:border-emerald-300 hover:bg-emerald-50',
+      onClick: () => navigate('/reports')
+    },
+    {
+      label: 'Process Orders',
+      desc: 'Review pending orders',
+      icon: ShoppingCart,
+      color: 'text-purple-600',
+      border: 'border-purple-100',
+      hover: 'hover:border-purple-300 hover:bg-purple-50',
+      onClick: () => navigate('/orders')
+    }
+  ]
+
+  const roleBreakdown = [
+    { label: 'Superadmin', count: stats.roleSummary?.superadmin || 0, icon: Shield, color: 'text-blue-700', bg: 'bg-blue-50', bar: 'bg-blue-500' },
+    { label: 'Admin', count: stats.roleSummary?.admin || 0, icon: UserCheck, color: 'text-purple-700', bg: 'bg-purple-50', bar: 'bg-purple-500' },
+    { label: 'Supervisor', count: stats.roleSummary?.supervisor || 0, icon: HardHat, color: 'text-emerald-700', bg: 'bg-emerald-50', bar: 'bg-emerald-500' },
+    { label: 'Operator', count: stats.roleSummary?.operator || 0, icon: Wrench, color: 'text-orange-700', bg: 'bg-orange-50', bar: 'bg-orange-500' },
+  ]
+
+  const totalRoleCount = roleBreakdown.reduce((sum, r) => sum + r.count, 0) || 1
+
+  const activityConfig: Record<string, { icon: any, dotColor: string, iconBg: string, iconColor: string }> = {
+    company: { icon: Building2, dotColor: 'bg-blue-500', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
+    order: { icon: ShoppingCart, dotColor: 'bg-indigo-500', iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600' },
+    customer: { icon: Users, dotColor: 'bg-purple-500', iconBg: 'bg-purple-100', iconColor: 'text-purple-600' },
+  }
+
+  const statusConfig: Record<string, { label: string, badge: string }> = {
+    success: { label: 'Success', badge: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+    completed: { label: 'Completed', badge: 'bg-blue-50 text-blue-700 border border-blue-200' },
+    pending: { label: 'Pending', badge: 'bg-amber-50 text-amber-700 border border-amber-200' },
+    in_transit: { label: 'In Transit', badge: 'bg-sky-50 text-sky-700 border border-sky-200' },
+  }
+
+  const greetingHour = currentTime.getHours()
+  const greeting = greetingHour < 12 ? 'Good Morning' : greetingHour < 17 ? 'Good Afternoon' : 'Good Evening'
 
   if (isLoading) {
     return (
@@ -321,218 +302,226 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in-scale">
-      <div className="animate-slide-in-up">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Welcome to the CRM Super Admin Panel. Here's an overview of your system.
-        </p>
+
+      {/* Hero Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 px-8 py-8 shadow-lg">
+        <div className="absolute top-0 right-0 -mr-24 -mt-24 w-72 h-72 rounded-full bg-white/5"></div>
+        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-56 h-56 rounded-full bg-white/5"></div>
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-blue-200 text-sm font-semibold uppercase tracking-widest mb-1">{greeting}</p>
+            <h1 className="text-3xl font-extrabold text-white tracking-tight">CRM Superadmin Panel</h1>
+            <p className="mt-2 text-blue-200 text-sm">Here's what's happening in your system today.</p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-xl border border-white/20 backdrop-blur-sm">
+              <Clock className="h-4 w-4 text-blue-200" />
+              <span className="text-white font-bold text-sm tabular-nums">
+                {currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-xl border border-white/20 backdrop-blur-sm">
+              <Calendar className="h-4 w-4 text-blue-200" />
+              <span className="text-white text-sm font-medium">
+                {currentTime.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Summary pills */}
+        <div className="relative z-10 flex flex-wrap gap-3 mt-6">
+          {[
+            { label: 'Companies', value: stats.totalCompanies },
+            { label: 'Orders', value: stats.totalOrders },
+            { label: 'Customers', value: stats.totalCustomers },
+            { label: 'System Health', value: `${stats.systemHealth}%` },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-full border border-white/20 text-sm text-white backdrop-blur-sm">
+              <span className="font-extrabold">{item.value}</span>
+              <span className="text-blue-200 font-medium">{item.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 animate-slide-in-up" style={{ animationDelay: '200ms' }}>
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {statCards.map((card, index) => {
           const Icon = card.icon
-          const TrendIcon = card.trend && card.trend > 0 ? TrendingUp : TrendingDown
-          const trendColor = card.trend && card.trend > 0 ? 'text-green-600' : 'text-red-600'
-
           return (
-            <div
+            <button
               key={card.title}
-              className="bg-white overflow-hidden shadow-lg rounded-xl hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-gray-100"
-              style={{ animationDelay: `${index * 100}ms` }}
+              onClick={card.onClick}
+              className="text-left bg-white overflow-hidden shadow-sm rounded-2xl border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 group cursor-pointer relative"
+              style={{ animationDelay: `${index * 60}ms` }}
             >
-              <div className="p-6">
+              <div className="absolute top-0 right-0 w-28 h-28 rounded-full bg-gradient-to-br from-gray-50 to-gray-100 -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
+              <div className="p-6 relative z-10">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className={`p-3 rounded-xl ${card.bgColor} shadow-lg`}>
-                      <Icon className="h-7 w-7 text-white" />
-                    </div>
-                    <div className="ml-4">
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        {card.title}
-                      </dt>
-                      <dd className="text-2xl font-bold text-gray-900 mt-1">
-                        {card.value}
-                      </dd>
-                    </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{card.title}</p>
+                    <p className="text-3xl font-extrabold text-gray-900 group-hover:text-blue-900 transition-colors">{card.value}</p>
+                    <p className="text-xs text-gray-500 mt-1.5 font-medium">{card.label}</p>
                   </div>
-                  {card.trend && (
-                    <div className={`flex items-center ${trendColor}`}>
-                      <TrendIcon className="h-4 w-4 mr-1" />
-                      <span className="text-sm font-semibold">
-                        {Math.abs(card.trend)}%
-                      </span>
-                    </div>
-                  )}
+                  <div className={`p-4 rounded-2xl ${card.bg} ${card.text} group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shadow-sm`}>
+                    <Icon className="h-6 w-6" />
+                  </div>
                 </div>
-                {card.trendLabel && (
-                  <p className="text-xs text-gray-500 mt-2">{card.trendLabel}</p>
-                )}
+                <div className={`flex items-center mt-4 text-xs font-bold ${card.text} opacity-0 group-hover:opacity-100 transition-opacity`}>
+                  <span>View details</span>
+                  <ArrowRight className="h-3 w-3 ml-1" />
+                </div>
               </div>
-            </div>
+            </button>
           )
         })}
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-in-up" style={{ animationDelay: '400ms' }}>
-        {/* Company Growth Chart */}
-        <div className="bg-white shadow-lg rounded-xl p-6 border border-gray-100 lg:col-span-2">
+      {/* Role Breakdown + Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Role Distribution */}
+        <div className="bg-white shadow-sm rounded-2xl border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">System Overview</h3>
-              <p className="text-sm text-gray-500">Key performance metrics</p>
-              <div className="flex items-center mt-1">
-                <span className="text-2xl font-bold text-blue-600">
-                  {stats.totalCompanies}
-                </span>
-                <span className="text-sm text-gray-500 ml-2">companies</span>
-              </div>
+              <h3 className="text-base font-bold text-gray-900 flex items-center">
+                <Shield className="h-4 w-4 mr-2 text-blue-600" />
+                User Role Distribution
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">{totalRoleCount} total users across all roles</p>
             </div>
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <BarChart3 className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-
-          {/* Metrics Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{stats.totalOrders}</div>
-              <div className="text-sm text-gray-500">Total Orders</div>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{stats.totalDeliveryChallans}</div>
-              <div className="text-sm text-gray-500">Delivery Challans</div>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">{stats.totalParts}</div>
-              <div className="text-sm text-gray-500">Total Parts</div>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-orange-600">{stats.totalCustomers}</div>
-              <div className="text-sm text-gray-500">Total Customers</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white shadow-lg rounded-xl p-6 border border-gray-100 animate-slide-in-up" style={{ animationDelay: '600ms' }}>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <Zap className="h-5 w-5 text-yellow-500 mr-2" />
-          Quick Actions
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            onClick={handleAddCompany}
-            className="text-left p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group cursor-pointer"
-          >
-            <div className="flex items-center">
-              <Building2 className="h-6 w-6 text-blue-600 mr-3" />
-              <div>
-                <div className="text-sm font-medium text-gray-900 group-hover:text-blue-900">
-                  Add New Company
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Register a new company account
-                </div>
-              </div>
-            </div>
-          </button>
-          <button
-            onClick={handleViewReports}
-            className="text-left p-4 rounded-lg border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-all duration-200 group cursor-pointer"
-          >
-            <div className="flex items-center">
-              <Users className="h-6 w-6 text-green-600 mr-3" />
-              <div>
-                <div className="text-sm font-medium text-gray-900 group-hover:text-green-900">
-                  View Reports
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Generate system analytics
-                </div>
-              </div>
-            </div>
-          </button>
-          <button
-            onClick={handleProcessOrders}
-            className="text-left p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all duration-200 group cursor-pointer"
-          >
-            <div className="flex items-center">
-              <ShoppingCart className="h-6 w-6 text-purple-600 mr-3" />
-              <div>
-                <div className="text-sm font-medium text-gray-900 group-hover:text-purple-900">
-                  Process Orders
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Review pending orders
-                </div>
-              </div>
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* Recent Activity Section */}
-      <div className="bg-white shadow-lg rounded-xl border border-gray-100 animate-slide-in-up" style={{ animationDelay: '800ms' }}>
-        <div className="px-6 py-5">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <Calendar className="h-5 w-5 text-blue-600 mr-2" />
-              Recent Activity
-            </h3>
-            <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
-              View All
+            <button
+              onClick={() => navigate('/company-admins')}
+              className="text-xs text-blue-600 font-bold hover:text-blue-800 flex items-center gap-1"
+            >
+              View All <ArrowRight className="h-3 w-3" />
             </button>
           </div>
           <div className="space-y-4">
-            {recentActivities.map((activity: any, index: number) => {
-              const Icon = activity.icon === 'Building2' ? Building2 :
-                activity.icon === 'ShoppingCart' ? ShoppingCart :
-                  activity.icon === 'Users' ? Users :
-                    activity.icon === 'FileText' ? FileText : Activity
-
-              const StatusIcon = activity.status === 'success' ? CheckCircle :
-                activity.status === 'completed' ? CheckCircle :
-                  activity.status === 'in_transit' ? FileText : XCircle
-
+            {roleBreakdown.map((role) => {
+              const Icon = role.icon
+              const pct = Math.round((role.count / totalRoleCount) * 100)
               return (
-                <div key={activity.id} className="relative flex items-start space-x-4 p-4 rounded-lg bg-gray-50 border border-gray-100 hover:bg-gray-100 transition-colors duration-200">
-                  <div className="absolute top-2 right-2 text-[10px] font-bold text-gray-400">
-                    # {index + 1}
-                  </div>
-                  <div className="flex-shrink-0">
-                    <div className={`w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center`}>
-                      <Icon className="w-5 h-5 text-gray-600" />
+                <div key={role.label}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-1.5 rounded-lg ${role.bg}`}>
+                        <Icon className={`h-3.5 w-3.5 ${role.color}`} />
+                      </div>
+                      <span className="text-sm font-semibold text-gray-700">{role.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-bold ${role.color}`}>{role.count}</span>
+                      <span className="text-xs text-gray-400">({pct}%)</span>
                     </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">
-                      {activity.title}
-                    </p>
-                    <p className="text-sm text-gray-700 mt-1">
-                      {activity.description}
-                    </p>
-                    <div className="flex items-center mt-2 text-xs text-gray-500">
-                      <span>{activity.time}</span>
-                      <span className="mx-2">•</span>
-                      <span className={`${activity.color} font-medium`}>
-                        {activity.status === 'success' ? 'Success' :
-                          activity.status === 'completed' ? 'Completed' :
-                            activity.status === 'in_transit' ? 'In Transit' : activity.status}
-                      </span>
-                      {activity.amount && (
-                        <span className="ml-2">•{activity.amount}</span>
-                      )}
-                    </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${role.bar} transition-all duration-700`}
+                      style={{ width: `${pct}%` }}
+                    />
                   </div>
                 </div>
               )
             })}
           </div>
         </div>
+
+        {/* Quick Actions */}
+        <div className="bg-white shadow-sm rounded-2xl border border-gray-100 p-6">
+          <h3 className="text-base font-bold text-gray-900 flex items-center mb-6">
+            <Zap className="h-4 w-4 text-yellow-500 mr-2" />
+            Quick Actions
+          </h3>
+          <div className="space-y-3">
+            {quickActions.map((action) => {
+              const Icon = action.icon
+              return (
+                <button
+                  key={action.label}
+                  onClick={action.onClick}
+                  className={`w-full text-left p-4 rounded-xl border ${action.border} ${action.hover} transition-all duration-200 group flex items-center justify-between`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className={`h-5 w-5 ${action.color}`} />
+                    <div>
+                      <div className="text-sm font-bold text-gray-900">{action.label}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{action.desc}</div>
+                    </div>
+                  </div>
+                  <ArrowRight className={`h-4 w-4 ${action.color} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                </button>
+              )
+            })}
+
+            {/* System Health indicator */}
+            <div className="mt-3 pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <Activity className="h-4 w-4 text-emerald-500" />
+                  System Health
+                </div>
+                <span className="text-sm font-extrabold text-emerald-600">{stats.systemHealth}%</span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-1000"
+                  style={{ width: `${stats.systemHealth}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1.5">All systems operational</p>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Recent Activity */}
+      <div className="bg-white shadow-sm rounded-2xl border border-gray-100">
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="text-base font-bold text-gray-900 flex items-center">
+            <Calendar className="h-4 w-4 text-blue-600 mr-2" />
+            Recent Activity
+          </h3>
+          <span className="text-xs text-gray-400 font-medium">Last 5 events</span>
+        </div>
+
+        {recentActivities.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+            <Activity className="h-10 w-10 mb-3 text-gray-200" />
+            <p className="text-sm font-medium">No recent activity</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {recentActivities.map((activity: any) => {
+              const cfg = activityConfig[activity.type] || activityConfig.company
+              const statusCfg = statusConfig[activity.status] || statusConfig.pending
+              const Icon = cfg.icon
+              return (
+                <div key={activity.id} className="flex items-start gap-4 px-6 py-4 hover:bg-gray-50/60 transition-colors group">
+                  <div className={`flex-shrink-0 w-10 h-10 ${cfg.iconBg} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                    <Icon className={`w-5 h-5 ${cfg.iconColor}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900">{activity.title}</p>
+                    <p className="text-sm text-gray-500 mt-0.5 truncate">{activity.description}</p>
+                    {activity.amount && (
+                      <p className="text-xs font-bold text-emerald-600 mt-1">{activity.amount}</p>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0 flex flex-col items-end gap-2">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${statusCfg.badge}`}>
+                      {statusCfg.label}
+                    </span>
+                    <span className="text-[11px] text-gray-400 font-medium">{activity.time}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
     </div>
   )
 }

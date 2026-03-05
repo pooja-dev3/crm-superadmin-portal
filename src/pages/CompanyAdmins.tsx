@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { Search, Plus, Edit, Trash2, UserX, Key, CheckCircle, XCircle } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { Search, Plus, Edit, Trash2, UserX, Key, CheckCircle, XCircle, MoreVertical, ShieldAlert } from 'lucide-react'
 import { superadminApi } from '../services/superadminApi'
 import AddAdminModal from '../components/AddAdminModal'
 import EditAdminModal from '../components/EditAdminModal'
@@ -17,8 +17,20 @@ const CompanyAdmins: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedAdmin, setSelectedAdmin] = useState<any | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; adminId: number | null; adminName: string }>({ isOpen: false, adminId: null, adminName: '' })
+  const [activeDropdown, setActiveDropdown] = useState<number | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const { addToast } = useToast()
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -299,125 +311,133 @@ const CompanyAdmins: React.FC = () => {
         </div>
 
         {/* Admins Table */}
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+        <div className="bg-white shadow-sm border border-gray-100 sm:rounded-xl overflow-hidden animate-fade-in-scale">
+          <div className="overflow-x-auto custom-scrollbar relative max-h-[600px]">
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead className="bg-gray-50/80 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-100">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-16 whitespace-nowrap">
                     Sr No.
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Admin
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Contact Details
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Phone
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Company
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Role
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Created Date
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Created
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50/90 whitespace-nowrap">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-50">
                 {getPaginatedData().map((admin: any, index: number) => (
-                  <tr key={admin.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <tr key={admin.id} className="hover:bg-blue-50/30 transition-colors group">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-400 group-hover:text-blue-500 transition-colors">
                       {(currentPage - 1) * itemsPerPage + index + 1}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-blue-900 flex items-center justify-center">
-                            <span className="text-white text-sm font-medium">
-                              {admin.name.split(' ').map((n: string) => n[0]).join('')}
-                            </span>
+                        <div className="flex-shrink-0 mr-3">
+                          <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 flex items-center justify-center text-blue-700 font-bold border border-blue-200 shadow-sm group-hover:bg-blue-200 transition-colors">
+                            {admin.name.split(' ').map((n: string) => n[0]).join('')}
                           </div>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{admin.name}</div>
-                        </div>
+                        <div className="text-sm font-bold text-gray-900 group-hover:text-blue-700 transition-colors">{admin.name}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {admin.email}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{admin.email}</div>
+                      <div className="text-xs text-gray-500">{admin.phone}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {admin.phone}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600">
                       {admin.company ? admin.company.comp_name : 'N/A'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${admin.role === 'admin'
-                        ? 'bg-blue-100 text-blue-800'
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold shadow-sm border ${admin.role === 'admin'
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
                         : admin.role === 'supervisor'
-                          ? 'bg-purple-100 text-purple-800'
+                          ? 'bg-purple-50 text-purple-700 border-purple-200'
                           : admin.role === 'operator'
-                            ? 'bg-gray-100 text-gray-800'
+                            ? 'bg-slate-50 text-slate-700 border-slate-200'
                             : admin.role === 'superadmin'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-800'
+                              ? 'bg-red-50 text-red-700 border-red-200'
+                              : 'bg-gray-50 text-gray-700 border-gray-200'
                         }`}>
-                        {admin.role}
+                        {admin.role.charAt(0).toUpperCase() + admin.role.slice(1)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${admin.is_active
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
+                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full border shadow-sm ${admin.is_active
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-rose-50 text-rose-700 border-rose-200'
                         }`}>
-                        {admin.is_active ? (
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                        ) : (
-                          <XCircle className="w-4 h-4 mr-1" />
-                        )}
+                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${admin.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
                         {admin.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(admin.created_at).toLocaleDateString()}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-400">
+                      {new Date(admin.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white group-hover:bg-blue-50/30 transition-colors">
+                      <div className="relative flex justify-end items-center" ref={activeDropdown === admin.id ? dropdownRef : null}>
                         <button
-                          onClick={() => handleEditAdmin(admin)}
-                          className="text-blue-600 hover:text-blue-900 p-1"
-                          title="Edit Admin"
+                          onClick={() => setActiveDropdown(activeDropdown === admin.id ? null : admin.id)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-100 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                          <Edit className="h-4 w-4" />
+                          <MoreVertical className="h-5 w-5" />
                         </button>
-                        <button
-                          onClick={() => handleDeleteAdmin(admin.id, admin.name)}
-                          className="text-red-600 hover:text-red-900 p-1"
-                          title="Delete Admin"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleToggleStatus(admin.id)}
-                          className={`p-1 ${admin.is_active
-                            ? 'text-red-600 hover:text-red-900'
-                            : 'text-green-600 hover:text-green-900'
-                            }`}
-                          title={admin.is_active ? 'Deactivate Admin' : 'Activate Admin'}
-                        >
-                          <UserX className="h-4 w-4" />
-                        </button>
+
+                        {/* Dropdown Menu */}
+                        {activeDropdown === admin.id && (
+                          <div className="absolute right-8 top-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 ring-1 ring-black ring-opacity-5 focus:outline-none z-50 animate-fade-in-scale origin-top-right overflow-hidden">
+                            <div className="py-1">
+                              <button
+                                onClick={() => { handleEditAdmin(admin); setActiveDropdown(null) }}
+                                className="group flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-yellow-50 hover:text-yellow-700 transition-colors"
+                              >
+                                <Edit className="mr-3 h-4 w-4 text-gray-400 group-hover:text-yellow-500" />
+                                Edit Admin
+                              </button>
+                              <button
+                                onClick={() => { handleToggleStatus(admin.id); setActiveDropdown(null) }}
+                                className={`group flex w-full items-center px-4 py-2 text-sm transition-colors ${admin.is_active ? 'hover:bg-orange-50 text-gray-700 hover:text-orange-700' : 'hover:bg-green-50 text-gray-700 hover:text-green-700'}`}
+                              >
+                                {admin.is_active ? (
+                                  <>
+                                    <UserX className="mr-3 h-4 w-4 text-gray-400 group-hover:text-orange-500" />
+                                    Deactivate
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="mr-3 h-4 w-4 text-gray-400 group-hover:text-green-500" />
+                                    Activate
+                                  </>
+                                )}
+                              </button>
+                              <div className="border-t border-gray-100 my-1"></div>
+                              <button
+                                onClick={() => { handleDeleteAdmin(admin.id, admin.name); setActiveDropdown(null) }}
+                                className="group flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                              >
+                                <Trash2 className="mr-3 h-4 w-4 text-red-400 group-hover:text-red-600" />
+                                Delete Admin
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -428,7 +448,7 @@ const CompanyAdmins: React.FC = () => {
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div className="bg-white px-4 py-3 flex items-center justify-between border border-gray-100 sm:px-6 shadow-sm rounded-b-xl border-t-0 -mt-px relative z-20">
               <div className="flex-1 flex justify-between sm:hidden">
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
@@ -481,8 +501,8 @@ const CompanyAdmins: React.FC = () => {
                             key={page}
                             onClick={() => handlePageChange(page)}
                             className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === page
-                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                               }`}
                           >
                             {page}

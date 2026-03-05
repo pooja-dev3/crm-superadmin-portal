@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Plus, Eye, Edit, Trash2, Package, Building, Calendar, Weight } from 'lucide-react'
+import { Search, Plus, Eye, Edit, Trash2, Package, Building, Calendar, Weight, FileText, Tag, Clock } from 'lucide-react'
 import { superadminApi } from '../services/superadminApi'
 import type { PartWithCustomer, CustomerWithParts } from '../types/api'
 import AddPartModal from '../components/AddPartModal'
@@ -215,88 +215,109 @@ const Parts: React.FC = () => {
       </div>
 
       {/* Parts Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredParts.map((part, index) => (
-          <div key={part.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
-            <div className="absolute top-2 right-2 text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded">
-              # {index + 1}
+          <div key={part.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:shadow-blue-900/5 hover:-translate-y-1 hover:border-blue-200 transition-all duration-300 group overflow-hidden relative flex flex-col h-full animate-fade-in-scale">
+
+            {/* Index Badge */}
+            <div className="absolute top-4 right-4 z-10 transition-transform duration-300 group-hover:scale-105">
+              <span className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold text-gray-500 bg-gray-100/80 backdrop-blur-sm rounded-full border border-gray-200 group-hover:bg-blue-50 group-hover:text-blue-700 group-hover:border-blue-200 transition-colors shadow-sm">
+                #{index + 1}
+              </span>
             </div>
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 bg-green-100 rounded-full p-3">
-                    <Package className="h-6 w-6 text-green-900" />
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900 line-clamp-2">{part.part_description}</h3>
-                    <p className="text-sm text-gray-500">ID: {part.id}</p>
-                  </div>
-                </div>
-                <div className="flex space-x-1">
-                  <button
-                    onClick={() => handleViewPart(part)}
-                    className="p-1 text-gray-400 hover:text-blue-900 transition-colors"
-                    title="View Details"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
+
+            <div className="p-6 flex-grow flex flex-col">
+              {/* Header section */}
+              <div className="flex items-start mb-5">
+                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center text-emerald-600 border border-emerald-100 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 flex-shrink-0">
+                  <Package className="h-7 w-7 drop-shadow-sm" />
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center">
-                  <Building className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                  <p className="text-sm text-gray-600">{part.customer.name}</p>
+              <div className="mb-2">
+                <h3 className="text-lg font-bold text-gray-900 line-clamp-2 group-hover:text-blue-700 transition-colors mb-1.5" title={part.part_description}>
+                  {part.part_description}
+                </h3>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest flex items-center">
+                  Part ID <span className="mx-1.5 opacity-50">•</span> {part.id}
+                </p>
+              </div>
+
+              {/* Divider */}
+              <div className="h-px w-full bg-gradient-to-r from-gray-100 via-gray-200 to-transparent my-5"></div>
+
+              {/* Details grid */}
+              <div className="space-y-3.5 mt-auto">
+                <div className="flex items-center text-sm group/item">
+                  <div className="w-8 flex justify-center group-hover/item:scale-110 transition-transform"><Building className="h-4 w-4 text-gray-400 group-hover/item:text-blue-500 transition-colors" /></div>
+                  <div className="flex-1 truncate">
+                    <span className="text-gray-400 text-[11px] font-bold uppercase tracking-wider mr-2">Client</span>
+                    <span className="font-semibold text-gray-800">{part.customer.name}</span>
+                  </div>
                 </div>
 
-                <div className="flex items-center">
-                  <Package className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                  <p className="text-sm text-gray-600">Drawing: {part.drawing_no}</p>
+                <div className="flex items-center text-sm group/item">
+                  <div className="w-8 flex justify-center group-hover/item:scale-110 transition-transform"><FileText className="h-4 w-4 text-gray-400 group-hover/item:text-blue-500 transition-colors" /></div>
+                  <div className="flex-1 truncate">
+                    <span className="text-gray-400 text-[11px] font-bold uppercase tracking-wider mr-2">Drawing</span>
+                    <span className="font-bold text-gray-700 bg-gray-50 px-2.5 py-0.5 rounded text-xs tracking-wider border border-gray-200/60 shadow-sm">{part.drawing_no}</span>
+                  </div>
                 </div>
 
                 {part.rev_no && (
-                  <div className="flex items-center">
-                    <Package className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                    <p className="text-sm text-gray-600">Rev: {part.rev_no}</p>
+                  <div className="flex items-center text-sm group/item">
+                    <div className="w-8 flex justify-center group-hover/item:scale-110 transition-transform"><Tag className="h-4 w-4 text-gray-400 group-hover/item:text-blue-500 transition-colors" /></div>
+                    <div className="flex-1 truncate">
+                      <span className="text-gray-400 text-[11px] font-bold uppercase tracking-wider mr-2">Revision</span>
+                      <span className="font-semibold text-gray-700 text-xs px-2 py-0.5 bg-gray-50 rounded-md border border-gray-100">{part.rev_no}</span>
+                    </div>
                   </div>
                 )}
+              </div>
+            </div>
 
-                <div className="flex items-center justify-between pt-3 border-t">
-                  <div className="flex items-center">
-                    <Calendar className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                    <span className="text-xs text-gray-500">
-                      {new Date(part.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  {part.lead_time && (
-                    <div className="flex items-center">
-                      <Calendar className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                      <span className="text-xs text-gray-500">
-                        {part.lead_time} days
-                      </span>
-                    </div>
-                  )}
+            {/* Footer with Actions */}
+            <div className="bg-gray-50/80 border-t border-gray-100 p-4 mt-auto">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center text-xs font-semibold text-gray-500">
+                  <Calendar className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
+                  <span>Created {new Date(part.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                 </div>
-                <div className="flex space-x-2">
-                  <>
-                    <button
-                      onClick={() => handleEditPart(part)}
-                      className="p-1 text-blue-600 hover:text-blue-700 transition-colors"
-                      title="Edit Part"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeletePart(part.id, part.part_description)}
-                      className="p-1 text-red-600 hover:text-red-700 transition-colors"
-                      title="Delete Part"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </>
+                {part.lead_time && (
+                  <div className="flex items-center text-[11px] font-bold text-amber-700 bg-amber-50/80 px-2 py-1 rounded-md border border-amber-200/60 shadow-sm">
+                    <Clock className="h-3 w-3 mr-1 opacity-70" />
+                    {part.lead_time} days lead
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-gray-200/60">
+                <button
+                  onClick={() => handleViewPart(part)}
+                  className="flex-1 flex justify-center items-center px-4 py-2 text-sm font-bold text-blue-700 bg-blue-50 border border-transparent rounded-xl hover:bg-blue-600 hover:text-white hover:shadow-md hover:shadow-blue-600/20 transition-all duration-200 shadow-sm mr-3"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Details
+                </button>
+                <div className="flex space-x-1.5">
+                  <button
+                    onClick={() => handleEditPart(part)}
+                    className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all duration-200 border border-transparent hover:border-amber-200 hover:shadow-sm"
+                    title="Edit"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeletePart(part.id, part.part_description)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 border border-transparent hover:border-red-200 hover:shadow-sm"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             </div>
+
           </div>
         ))}
       </div>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Edit, Trash2, Eye, Power, PowerOff } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Eye, Power, PowerOff, MoreVertical } from 'lucide-react'
 import { superadminApi } from '../services/superadminApi'
 import type { Company } from '../services/companies'
 import AddCompanyModal from '../components/AddCompanyModal'
@@ -21,8 +21,20 @@ const Companies: React.FC = () => {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
   const [statusConfirm, setStatusConfirm] = useState<{ isOpen: boolean; company: Company | null; newStatus: boolean }>({ isOpen: false, company: null, newStatus: false })
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; companyId: string | null; companyName: string }>({ isOpen: false, companyId: null, companyName: '' })
+  const [activeDropdown, setActiveDropdown] = useState<number | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const { addToast } = useToast()
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -440,118 +452,132 @@ const Companies: React.FC = () => {
         </div>
 
         {/* Companies Table */}
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+        <div className="bg-white shadow-sm border border-gray-100 sm:rounded-xl overflow-hidden animate-fade-in-scale">
+          <div className="overflow-x-auto custom-scrollbar relative">
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead className="bg-gray-50/80 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-100">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-16 whitespace-nowrap">
                     Sr No.
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Company Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Company Code
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Code
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Email
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Address
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Phone
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Created Date
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Created
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50/90 whitespace-nowrap">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-50">
                 {getPaginatedData().map((company, index) => (
-                  <tr key={company.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {(currentPage - 1) * itemsPerPage + index + 1}
+                  <tr key={company.id} className="hover:bg-blue-50/30 transition-colors group">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-400 group-hover:text-blue-500 transition-colors">
+                      {((currentPage - 1) * itemsPerPage) + index + 1}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{company.comp_name}</div>
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-700 font-bold text-xs ring-2 ring-white shadow-sm mr-3 flex-shrink-0">
+                          {company.comp_name.charAt(0).toUpperCase()}
                         </div>
+                        <div className="text-sm font-bold text-gray-900 group-hover:text-blue-700 transition-colors">{company.comp_name}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {company.code || '-'}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600">
+                      <span className="bg-gray-100 px-2 py-1 rounded text-xs tracking-wider border border-gray-200">{company.code || '-'}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${company.is_active
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
+                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full border shadow-sm ${company.is_active
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-rose-50 text-rose-700 border-rose-200'
                         }`}>
-                        {company.is_active ? (
-                          <span className="w-4 h-4 mr-1">●</span>
-                        ) : (
-                          <span className="w-4 h-4 mr-1">●</span>
-                        )}
+                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${company.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
                         {company.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500">
                       {company.email}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={company.address}>
                       {company.address || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500">
                       {company.phone}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(company.created_at).toLocaleDateString()}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-400">
+                      {new Date(company.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white group-hover:bg-blue-50/30 transition-colors">
+                      <div className="relative flex justify-end items-center" ref={activeDropdown === company.id ? dropdownRef : null}>
                         <button
-                          onClick={() => handleToggleStatus(company)}
-                          className={`p-1 rounded transition-colors ${company.is_active
-                            ? 'text-orange-600 hover:text-orange-900 hover:bg-orange-50'
-                            : 'text-green-600 hover:text-green-900 hover:bg-green-50'
-                            }`}
-                          title={company.is_active ? 'Deactivate Company' : 'Activate Company'}
+                          onClick={() => setActiveDropdown(activeDropdown === company.id ? null : company.id)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-100 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                          {company.is_active ? (
-                            <PowerOff className="h-4 w-4" />
-                          ) : (
-                            <Power className="h-4 w-4" />
-                          )}
+                          <MoreVertical className="h-5 w-5" />
                         </button>
-                        <button
-                          onClick={() => navigate(`/companies/${company.id}`)}
-                          className="text-blue-600 hover:text-blue-900 p-1"
-                          title="View Details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEditCompany(company)}
-                          className="text-yellow-600 hover:text-yellow-900 p-1"
-                          title="Edit"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCompany(company.id.toString(), company.comp_name)}
-                          className="p-1 text-red-600 hover:text-red-900"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+
+                        {/* Abstracted Dropdown Menu */}
+                        {activeDropdown === company.id && (
+                          <div className="absolute right-8 top-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 ring-1 ring-black ring-opacity-5 focus:outline-none z-50 animate-fade-in-scale origin-top-right overflow-hidden">
+                            <div className="py-1">
+                              <button
+                                onClick={() => { navigate(`/companies/${company.id}`); setActiveDropdown(null) }}
+                                className="group flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                              >
+                                <Eye className="mr-3 h-4 w-4 text-gray-400 group-hover:text-blue-500" />
+                                View Details
+                              </button>
+                              <button
+                                onClick={() => { handleEditCompany(company); setActiveDropdown(null) }}
+                                className="group flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-yellow-50 hover:text-yellow-700 transition-colors"
+                              >
+                                <Edit className="mr-3 h-4 w-4 text-gray-400 group-hover:text-yellow-500" />
+                                Edit Company
+                              </button>
+                              <button
+                                onClick={() => { handleToggleStatus(company); setActiveDropdown(null) }}
+                                className={`group flex w-full items-center px-4 py-2 text-sm transition-colors ${company.is_active ? 'hover:bg-orange-50 text-gray-700 hover:text-orange-700' : 'hover:bg-green-50 text-gray-700 hover:text-green-700'}`}
+                              >
+                                {company.is_active ? (
+                                  <>
+                                    <PowerOff className="mr-3 h-4 w-4 text-gray-400 group-hover:text-orange-500" />
+                                    Deactivate
+                                  </>
+                                ) : (
+                                  <>
+                                    <Power className="mr-3 h-4 w-4 text-gray-400 group-hover:text-green-500" />
+                                    Activate
+                                  </>
+                                )}
+                              </button>
+                              <div className="border-t border-gray-100 my-1"></div>
+                              <button
+                                onClick={() => { handleDeleteCompany(company.id.toString(), company.comp_name); setActiveDropdown(null) }}
+                                className="group flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                              >
+                                <Trash2 className="mr-3 h-4 w-4 text-red-400 group-hover:text-red-600" />
+                                Delete Company
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -563,7 +589,7 @@ const Companies: React.FC = () => {
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
-          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 shadow rounded-b-md">
+          <div className="bg-white px-4 py-3 flex items-center justify-between border border-gray-100 sm:px-6 shadow-sm rounded-xl">
             <div className="flex-1 flex justify-between sm:hidden">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
@@ -617,8 +643,8 @@ const Companies: React.FC = () => {
                           key={page}
                           onClick={() => handlePageChange(page)}
                           className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === page
-                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                             }`}
                         >
                           {page}

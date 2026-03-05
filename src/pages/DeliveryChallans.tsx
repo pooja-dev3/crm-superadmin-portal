@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { Search, Eye, Truck, CheckCircle, Clock, AlertCircle, X, Plus, Edit, Trash2 } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { Search, Eye, Truck, CheckCircle, Clock, AlertCircle, X, Plus, Edit, Trash2, MoreVertical } from 'lucide-react'
 import { superadminApi } from '../services/superadminApi'
 import AddDeliveryChallanModal from '../components/AddDeliveryChallanModal'
 import EditDeliveryChallanModal from '../components/EditDeliveryChallanModal'
@@ -33,6 +33,19 @@ const DeliveryChallans: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; challanId: string | null; challanNumber: string }>({ isOpen: false, challanId: null, challanNumber: '' })
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   // Notification state
   const [showNotification, setShowNotification] = useState(false)
@@ -374,111 +387,121 @@ const DeliveryChallans: React.FC = () => {
       </div>
 
       {/* Delivery Challans Table */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+      <div className="bg-white shadow-sm border border-gray-100 sm:rounded-xl overflow-hidden animate-fade-in-scale">
+        <div className="overflow-x-auto custom-scrollbar relative max-h-[600px]">
+          <table className="min-w-full divide-y divide-gray-100">
+            <thead className="bg-gray-50/80 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-100">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-16 whitespace-nowrap">
                   Sr No.
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                   Challan Number
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                   Company
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                   Order ID
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Quantity
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                  Qty / In / Rem
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Inward
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Remaining Quantity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created Date
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                  Dates (Create/Deliv)
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Delivery Date
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50/90 whitespace-nowrap">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-50">
               {getPaginatedData().filter(challan => challan).map((challan, index) => (
-                <tr key={challan.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <tr key={challan.id} className="hover:bg-blue-50/30 transition-colors group">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-400 group-hover:text-blue-500 transition-colors">
                     {(currentPage - 1) * itemsPerPage + index + 1}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
                     {challan.challanNumber}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600">
                     {challan.company}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {challan.orderId}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {challan.quantity || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {challan.inward || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {challan.remaining_quantity || '-'}
+                    <span className="bg-gray-100 px-2 py-1 rounded text-xs tracking-wider border border-gray-200">{challan.orderId}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${challan.status === 'delivered'
-                        ? 'bg-green-100 text-green-800'
-                        : challan.status === 'in_transit'
-                          ? 'bg-blue-200 text-blue-900'
-                          : challan.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
+                    <div className="flex items-center space-x-2 text-sm font-medium">
+                      <span className="text-gray-900 bg-gray-100 px-2 py-0.5 rounded" title="Total Quantity">{challan.quantity || '-'}</span>
+                      <span className="text-gray-400">/</span>
+                      <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100" title="Inward">{challan.inward || '-'}</span>
+                      <span className="text-gray-400">/</span>
+                      <span className="text-green-700 bg-green-50 px-2 py-0.5 rounded border border-green-100" title="Remaining">{challan.remaining_quantity || '-'}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold shadow-sm border ${challan.status === 'delivered'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : challan.status === 'in_transit'
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                        : challan.status === 'pending'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
                       }`}>
                       {getStatusIcon(challan.status)}
-                      <span className="ml-1">{challan.status ? challan.status.replace('_', ' ') : 'Unknown'}</span>
+                      <span className="ml-1.5">{challan.status ? challan.status.replace('_', ' ').charAt(0).toUpperCase() + challan.status.replace('_', ' ').slice(1) : 'Unknown'}</span>
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(challan.createdDate).toLocaleDateString()}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-600">
+                      {new Date(challan.createdDate).toLocaleDateString(undefined, { year: '2-digit', month: 'short', day: 'numeric' })}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      {challan.deliveryDate ? new Date(challan.deliveryDate).toLocaleDateString(undefined, { year: '2-digit', month: 'short', day: 'numeric' }) : '-'}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {challan.deliveryDate ? new Date(challan.deliveryDate).toLocaleDateString() : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleViewChallan(challan.id)}
-                      className="text-blue-900 hover:text-blue-800 p-1 mr-1"
-                      title="View Challan"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleEditChallan(challan)}
-                      className="text-blue-600 hover:text-blue-700 p-1 mr-1"
-                      title="Edit Challan"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteChallan(challan.id, challan.challanNumber)}
-                      className="text-red-600 hover:text-red-700 p-1"
-                      title="Delete Challan"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white group-hover:bg-blue-50/30 transition-colors">
+                    <div className="relative flex justify-end items-center" ref={activeDropdown === challan.id ? dropdownRef : null}>
+                      <button
+                        onClick={() => setActiveDropdown(activeDropdown === challan.id ? null : challan.id)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-100 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <MoreVertical className="h-5 w-5" />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {activeDropdown === challan.id && (
+                        <div className="absolute right-8 top-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 ring-1 ring-black ring-opacity-5 focus:outline-none z-50 animate-fade-in-scale origin-top-right overflow-hidden">
+                          <div className="py-1">
+                            <button
+                              onClick={() => { handleViewChallan(challan.id); setActiveDropdown(null) }}
+                              className="group flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                            >
+                              <Eye className="mr-3 h-4 w-4 text-gray-400 group-hover:text-blue-500" />
+                              View Challan
+                            </button>
+                            <button
+                              onClick={() => { handleEditChallan(challan); setActiveDropdown(null) }}
+                              className="group flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-yellow-50 hover:text-yellow-700 transition-colors"
+                            >
+                              <Edit className="mr-3 h-4 w-4 text-gray-400 group-hover:text-yellow-500" />
+                              Edit Challan
+                            </button>
+                            <div className="border-t border-gray-100 my-1"></div>
+                            <button
+                              onClick={() => { handleDeleteChallan(challan.id, challan.challanNumber); setActiveDropdown(null) }}
+                              className="group flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="mr-3 h-4 w-4 text-red-400 group-hover:text-red-600" />
+                              Delete Challan
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -488,7 +511,7 @@ const DeliveryChallans: React.FC = () => {
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
-          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div className="bg-white px-4 py-3 flex items-center justify-between border border-gray-100 sm:px-6 shadow-sm rounded-b-xl border-t-0 -mt-px relative z-20">
             <div className="flex-1 flex justify-between sm:hidden">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
@@ -534,8 +557,8 @@ const DeliveryChallans: React.FC = () => {
                       key={page}
                       onClick={() => handlePageChange(page)}
                       className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === page
-                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                        ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                         }`}
                     >
                       {page}
@@ -619,12 +642,12 @@ const DeliveryChallans: React.FC = () => {
                       <label className="block text-sm font-medium text-gray-500">Status</label>
                       <div className="mt-1">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedChallan.status === 'delivered'
-                            ? 'bg-green-100 text-green-800'
-                            : selectedChallan.status === 'in_transit'
-                              ? 'bg-blue-200 text-blue-900'
-                              : selectedChallan.status === 'pending'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-red-100 text-red-800'
+                          ? 'bg-green-100 text-green-800'
+                          : selectedChallan.status === 'in_transit'
+                            ? 'bg-blue-200 text-blue-900'
+                            : selectedChallan.status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
                           }`}>
                           {getStatusIcon(selectedChallan.status)}
                           <span className="ml-1">{selectedChallan.status.replace('_', ' ')}</span>

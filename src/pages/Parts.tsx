@@ -4,8 +4,11 @@ import { superadminApi } from '../services/superadminApi'
 import type { PartWithCustomer, CustomerWithParts } from '../types/api'
 import AddPartModal from '../components/AddPartModal'
 import EditPartModal from '../components/EditPartModal'
+import ViewPartModal from '../components/ViewPartModal'
 import ConfirmModal from '../components/ConfirmModal'
 import { useToast } from '../contexts/ToastContext'
+import LoadingSpinner from '../components/common/LoadingSpinner'
+import EmptyState from '../components/common/EmptyState'
 
 const Parts: React.FC = () => {
   const [parts, setParts] = useState<any[]>([])
@@ -59,12 +62,12 @@ const Parts: React.FC = () => {
         let partsData: PartWithCustomer[] = []
         if (Array.isArray(partsResponse.data)) {
           // Direct array response
-          partsData = partsResponse.data.sort((a: any, b: any) => 
+          partsData = partsResponse.data.sort((a: any, b: any) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
         } else if (partsResponse.data && typeof partsResponse.data === 'object' && 'data' in partsResponse.data && Array.isArray((partsResponse.data as any).data)) {
           // Paginated response
-          partsData = (partsResponse.data as any).data.sort((a: any, b: any) => 
+          partsData = (partsResponse.data as any).data.sort((a: any, b: any) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
         }
@@ -155,11 +158,7 @@ const Parts: React.FC = () => {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
-      </div>
-    )
+    return <LoadingSpinner />
   }
 
   return (
@@ -217,8 +216,11 @@ const Parts: React.FC = () => {
 
       {/* Parts Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredParts.map((part) => (
+        {filteredParts.map((part, index) => (
           <div key={part.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+            <div className="absolute top-2 right-2 text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded">
+              # {index + 1}
+            </div>
             <div className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center">
@@ -300,221 +302,19 @@ const Parts: React.FC = () => {
       </div>
 
       {filteredParts.length === 0 && (
-        <div className="text-center py-12">
-          <Package className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No parts found</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {searchTerm || customerFilter !== 'all' ? 'Try adjusting your search terms' : 'Get started by adding a new part'}
-          </p>
-        </div>
+        <EmptyState
+          title="No parts found"
+          message={searchTerm || customerFilter !== 'all' ? 'Try adjusting your search terms' : 'Get started by adding a new part'}
+          icon={Package}
+        />
       )}
 
       {/* View Part Modal */}
-      {showViewModal && selectedPart && (
-        <div className="fixed inset-0 z-[9999] overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div 
-              className="fixed inset-0 transition-opacity"
-              aria-hidden="true"
-              onClick={handleCloseViewModal}
-            >
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl leading-6 font-medium text-gray-900">
-                    Part Details
-                  </h3>
-                  <button
-                    onClick={handleCloseViewModal}
-                    className="text-gray-400 hover:text-gray-500 transition-colors"
-                  >
-                    <Trash2 className="h-6 w-6" />
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Basic Information */}
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h4>
-                      <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-500">Part Description</label>
-                          <p className="mt-1 text-sm text-gray-900 font-semibold">{selectedPart.part_description}</p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-500">Drawing Number</label>
-                          <p className="mt-1 text-sm text-gray-900">{selectedPart.drawing_no}</p>
-                        </div>
-                        {selectedPart.rev_no && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-500">Revision Number</label>
-                            <p className="mt-1 text-sm text-gray-900">{selectedPart.rev_no}</p>
-                          </div>
-                        )}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-500">Customer</label>
-                          <p className="mt-1 text-sm text-gray-900">{selectedPart.customer.name}</p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-500">Part ID</label>
-                            <p className="mt-1 text-sm text-gray-900">{selectedPart.id}</p>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-500">Created Date</label>
-                            <p className="mt-1 text-sm text-gray-900">
-                              {new Date(selectedPart.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Technical Specifications */}
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-lg font-medium text-gray-900 mb-4">Technical Specifications</h4>
-                      <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                        {selectedPart.net_wt && (
-                          <div className="flex items-center">
-                            <Weight className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-                            <div>
-                              <label className="block text-sm font-medium text-gray-500">Net Weight</label>
-                              <p className="mt-1 text-sm text-gray-900">{selectedPart.net_wt}</p>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {selectedPart.thickness && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-500">Thickness</label>
-                            <p className="mt-1 text-sm text-gray-900">{selectedPart.thickness}</p>
-                          </div>
-                        )}
-
-                        {selectedPart.raw_material && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-500">Raw Material</label>
-                            <p className="mt-1 text-sm text-gray-900">{selectedPart.raw_material}</p>
-                          </div>
-                        )}
-
-                        {selectedPart.tool_information && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-500">Tool Information</label>
-                            <p className="mt-1 text-sm text-gray-900">{selectedPart.tool_information}</p>
-                          </div>
-                        )}
-
-                        {selectedPart.drawing_location && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-500">Drawing Location</label>
-                            <p className="mt-1 text-sm text-gray-900">{selectedPart.drawing_location}</p>
-                          </div>
-                        )}
-
-                        {selectedPart.operation_sequence && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-500">Operation Sequence</label>
-                            <p className="mt-1 text-sm text-gray-900">{selectedPart.operation_sequence}</p>
-                          </div>
-                        )}
-
-                        {selectedPart.lead_time && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-500">Lead Time</label>
-                            <p className="mt-1 text-sm text-gray-900">{selectedPart.lead_time} days</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Purchase Order Information */}
-                  {(selectedPart.po_no || selectedPart.po_date || selectedPart.po_qty || selectedPart.po_received) && (
-                    <div className="space-y-4 lg:col-span-2">
-                      <div>
-                        <h4 className="text-lg font-medium text-gray-900 mb-4">Purchase Order Information</h4>
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {selectedPart.po_no && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-500">PO Number</label>
-                                <p className="mt-1 text-sm text-gray-900">{selectedPart.po_no}</p>
-                              </div>
-                            )}
-                            
-                            {selectedPart.po_date && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-500">PO Date</label>
-                                <p className="mt-1 text-sm text-gray-900">
-                                  {new Date(selectedPart.po_date).toLocaleDateString()}
-                                </p>
-                              </div>
-                            )}
-                            
-                            {selectedPart.po_qty && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-500">PO Quantity</label>
-                                <p className="mt-1 text-sm text-gray-900">{selectedPart.po_qty}</p>
-                              </div>
-                            )}
-                            
-                            {selectedPart.po_drg_rev && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-500">PO Drawing Revision</label>
-                                <p className="mt-1 text-sm text-gray-900">{selectedPart.po_drg_rev}</p>
-                              </div>
-                            )}
-                            
-                            <div>
-                              <label className="block text-sm font-medium text-gray-500">PO Received</label>
-                              <p className="mt-1 text-sm text-gray-900">
-                                {selectedPart.po_received ? 'Yes' : 'No'}
-                              </p>
-                            </div>
-                            
-                            {selectedPart.reqd_date_as_per_po && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-500">Required Date as per PO</label>
-                                <p className="mt-1 text-sm text-gray-900">
-                                  {new Date(selectedPart.reqd_date_as_per_po).toLocaleDateString()}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {selectedPart.acknowledgement_remarks && (
-                            <div className="mt-4">
-                              <label className="block text-sm font-medium text-gray-500">Acknowledgement Remarks</label>
-                              <p className="mt-1 text-sm text-gray-900">{selectedPart.acknowledgement_remarks}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-900 text-base font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 sm:ml-3 sm:w-auto sm:text-sm transition-colors"
-                  onClick={handleCloseViewModal}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ViewPartModal
+        isOpen={showViewModal}
+        onClose={handleCloseViewModal}
+        part={selectedPart}
+      />
 
       {/* Add Part Modal */}
       <AddPartModal

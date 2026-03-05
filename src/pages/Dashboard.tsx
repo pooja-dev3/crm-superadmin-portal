@@ -69,49 +69,102 @@ const Dashboard: React.FC = () => {
   // Fetch real recent activities from existing APIs
   const fetchRecentActivities = async () => {
     try {
-      const activities = []
+      // Fetch latest data from different APIs concurrently
+      const [companiesRes, ordersRes, customersRes] = await Promise.allSettled([
+        superadminApi.getCompanies(1),
+        superadminApi.getOrders(),
+        superadminApi.getCustomers()
+      ]);
 
-      // Since real API server is not running, show mock activities
-      activities.push(
-        {
-          id: 'mock-1',
-          type: 'company',
-          title: 'New Company Registered',
-          description: 'Tata Company joined the platform',
-          time: '2 hours ago',
-          status: 'success',
-          icon: 'Building2',
-          color: 'text-green-600'
-        },
-        {
-          id: 'mock-2',
-          type: 'order',
-          title: 'Order Completed',
-          description: 'Order #123 processed successfully',
-          time: '4 hours ago',
-          status: 'completed',
-          icon: 'ShoppingCart',
-          color: 'text-blue-600',
-          amount: '₹2,450.00'
-        },
-        {
-          id: 'mock-3',
-          type: 'customer',
-          title: 'New Customer Added',
-          description: 'ABC Industries registered successfully',
-          time: '6 hours ago',
-          status: 'success',
-          icon: 'Users',
-          color: 'text-purple-600'
-        }
-      )
+      const activities: any[] = [];
 
-      setRecentActivities(activities)
+      // Helper function for relative time
+      const getRelativeTime = (dateString: string) => {
+        if (!dateString) return 'Recently';
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+        if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+        return `${Math.floor(diffInSeconds / 86400)} days ago`;
+      };
+
+      // Process companies
+      if (companiesRes.status === 'fulfilled' && (companiesRes.value as any).success) {
+        const responseData = (companiesRes.value as any).data;
+        const companies = Array.isArray(responseData) ? responseData : (responseData?.data || []);
+
+        companies.slice(0, 5).forEach((company: any) => {
+          const dateStr = company.created_at || new Date().toISOString();
+          activities.push({
+            id: `comp-${company.id}`,
+            type: 'company',
+            title: 'New Company Registered',
+            description: `${company.comp_name || company.company_name || 'A company'} joined the platform`,
+            time: getRelativeTime(dateStr),
+            timestamp: new Date(dateStr).getTime(),
+            status: company.status === 'active' || company.is_active ? 'success' : 'pending',
+            icon: 'Building2',
+            color: 'text-green-600'
+          });
+        });
+      }
+
+      // Process orders
+      if (ordersRes.status === 'fulfilled' && (ordersRes.value as any).success) {
+        const orders = Array.isArray((ordersRes.value as any).data) ? (ordersRes.value as any).data : [];
+        orders.slice(0, 5).forEach((order: any) => {
+          const dateStr = order.orderDate || order.created_at || new Date().toISOString();
+          activities.push({
+            id: `order-${order.id}`,
+            type: 'order',
+            title: 'Order Placed',
+            description: `Order #${order.orderNumber || order.po_no || order.id} created`,
+            time: getRelativeTime(dateStr),
+            timestamp: new Date(dateStr).getTime(),
+            status: order.status === 'completed' ? 'completed' : 'in_transit',
+            icon: 'ShoppingCart',
+            color: 'text-blue-600',
+            amount: order.totalAmount ? `₹${Number(order.totalAmount).toFixed(2)}` : undefined
+          });
+        });
+      }
+
+      // Process customers
+      if (customersRes.status === 'fulfilled' && (customersRes.value as any).success) {
+        const customers = Array.isArray((customersRes.value as any).data) ? (customersRes.value as any).data : [];
+        customers.slice(0, 5).forEach((customer: any) => {
+          const dateStr = customer.created_at || new Date().toISOString();
+          activities.push({
+            id: `cust-${customer.id}`,
+            type: 'customer',
+            title: 'New Customer Added',
+            description: `${customer.customerName || customer.name || 'A customer'} registered successfully`,
+            time: getRelativeTime(dateStr),
+            timestamp: new Date(dateStr).getTime(),
+            status: 'success',
+            icon: 'Users',
+            color: 'text-purple-600'
+          });
+        });
+      }
+
+      // Sort by timestamp descending (newest first)
+      activities.sort((a, b) => b.timestamp - a.timestamp);
+
+      // Take the top 5 most recent activities overall
+      setRecentActivities(activities.slice(0, 5));
     } catch (error) {
-      console.error('Error fetching recent activities:', error)
-      setRecentActivities([])
+      console.error('Error fetching recent activities from APIs:', error);
+      setRecentActivities([]);
     }
   }
+
+  useEffect(() => {
+    fetchRecentActivities();
+  }, []);
 
   const handleViewAllActivities = () => {
     navigate('/activities')
@@ -445,7 +498,10 @@ const Dashboard: React.FC = () => {
                   activity.status === 'in_transit' ? FileText : XCircle
 
               return (
-                <div key={activity.id} className="flex items-start space-x-4 p-4 rounded-lg bg-gray-50 border border-gray-100 hover:bg-gray-100 transition-colors duration-200">
+                <div key={activity.id} className="relative flex items-start space-x-4 p-4 rounded-lg bg-gray-50 border border-gray-100 hover:bg-gray-100 transition-colors duration-200">
+                  <div className="absolute top-2 right-2 text-[10px] font-bold text-gray-400">
+                    # {index + 1}
+                  </div>
                   <div className="flex-shrink-0">
                     <div className={`w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center`}>
                       <Icon className="w-5 h-5 text-gray-600" />

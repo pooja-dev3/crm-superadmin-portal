@@ -19,21 +19,34 @@ const CompanyAdmins: React.FC = () => {
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; adminId: number | null; adminName: string }>({ isOpen: false, adminId: null, adminName: '' })
   const { addToast } = useToast()
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [itemsPerPage] = useState(10)
+  const [isBackendPaginated, setIsBackendPaginated] = useState(false)
+
   useEffect(() => {
     fetchAdmins()
   }, [])
 
-  const fetchAdmins = async () => {
+  const fetchAdmins = async (page: number = 1) => {
+    setIsLoading(true)
     try {
-      const response = await superadminApi.getCompanyUsers() as { success: boolean; data: any }
+      const response = await superadminApi.getCompanyUsers(page) as { success: boolean; data: any; pagination?: any }
       console.log('Company Admins API Response:', response)
 
-      // Handle real API structure only
+      // Handle real API structure and mock paginated structure
       let adminData: any[] = []
 
-      if (response.success && Array.isArray(response.data)) {
-        // Real API returns simple array in response.data
-        adminData = response.data
+      if (response.success) {
+        if (Array.isArray(response.data)) {
+          // Real API returns simple array in response.data
+          adminData = response.data
+        } else if (response.data && Array.isArray(response.data.data)) {
+          // Mock API returns paginated structure
+          adminData = response.data.data
+        }
       }
 
       // Sort by created_at date (latest first)
@@ -41,10 +54,34 @@ const CompanyAdmins: React.FC = () => {
 
       setAdmins(adminData)
       setFilteredAdmins(adminData)
+
+      // Handle pagination from backend if available, otherwise calculate locally
+      if (response.data && response.data.current_page) {
+        setCurrentPage(response.data.current_page)
+        setTotalPages(response.data.last_page || Math.ceil((response.data.total || 0) / (response.data.per_page || itemsPerPage)))
+        setTotalItems(response.data.total || adminData.length)
+        setIsBackendPaginated(true)
+      } else if (response.pagination) {
+        setCurrentPage(response.pagination.current_page)
+        setTotalPages(response.pagination.last_page)
+        setTotalItems(response.pagination.total)
+        setIsBackendPaginated(true)
+      } else {
+        // Calculate pagination locally
+        const total = adminData.length
+        const lastPage = Math.ceil(total / itemsPerPage)
+        setCurrentPage(page)
+        setTotalPages(lastPage > 0 ? lastPage : 1)
+        setTotalItems(total)
+        setIsBackendPaginated(false)
+      }
     } catch (error) {
       console.error('Error fetching admins:', error)
       setAdmins([])
       setFilteredAdmins([])
+      setCurrentPage(1)
+      setTotalPages(1)
+      setTotalItems(0)
     } finally {
       setIsLoading(false)
     }
@@ -79,7 +116,35 @@ const CompanyAdmins: React.FC = () => {
     }
 
     setFilteredAdmins(filtered)
+
+    // Reset to first page when filters change
+    setCurrentPage(1)
   }, [admins, searchTerm, statusFilter, companyFilter])
+
+  // Get paginated data for current page
+  const getPaginatedData = () => {
+    if (isBackendPaginated) {
+      // Backend pagination - return data as-is
+      return filteredAdmins
+    } else {
+      // Local pagination - slice the filtered data
+      const startIndex = (currentPage - 1) * itemsPerPage
+      const endIndex = startIndex + itemsPerPage
+      return filteredAdmins.slice(startIndex, endIndex)
+    }
+  }
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+
+      if (isBackendPaginated) {
+        // Backend pagination - fetch new page data
+        fetchAdmins(page)
+      }
+    }
+  }
 
   const handleToggleStatus = async (adminId: number) => {
     const admin = admins.find(a => a.id === adminId)
@@ -240,6 +305,9 @@ const CompanyAdmins: React.FC = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Sr No.
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Admin
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -266,8 +334,11 @@ const CompanyAdmins: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredAdmins.map((admin) => (
+                {getPaginatedData().map((admin: any, index: number) => (
                   <tr key={admin.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {(currentPage - 1) * itemsPerPage + index + 1}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
@@ -293,22 +364,22 @@ const CompanyAdmins: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${admin.role === 'admin'
-                          ? 'bg-blue-100 text-blue-800'
-                          : admin.role === 'supervisor'
-                            ? 'bg-purple-100 text-purple-800'
-                            : admin.role === 'operator'
-                              ? 'bg-gray-100 text-gray-800'
-                              : admin.role === 'superadmin'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-gray-100 text-gray-800'
+                        ? 'bg-blue-100 text-blue-800'
+                        : admin.role === 'supervisor'
+                          ? 'bg-purple-100 text-purple-800'
+                          : admin.role === 'operator'
+                            ? 'bg-gray-100 text-gray-800'
+                            : admin.role === 'superadmin'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
                         }`}>
                         {admin.role}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${admin.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
                         }`}>
                         {admin.is_active ? (
                           <CheckCircle className="w-4 h-4 mr-1" />
@@ -340,8 +411,8 @@ const CompanyAdmins: React.FC = () => {
                         <button
                           onClick={() => handleToggleStatus(admin.id)}
                           className={`p-1 ${admin.is_active
-                              ? 'text-red-600 hover:text-red-900'
-                              : 'text-green-600 hover:text-green-900'
+                            ? 'text-red-600 hover:text-red-900'
+                            : 'text-green-600 hover:text-green-900'
                             }`}
                           title={admin.is_active ? 'Deactivate Admin' : 'Activate Admin'}
                         >
@@ -354,6 +425,97 @@ const CompanyAdmins: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+              <div className="flex-1 flex justify-between sm:hidden">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                    <span className="font-medium">
+                      {isBackendPaginated ? Math.min(currentPage * itemsPerPage, totalItems) : Math.min(currentPage * itemsPerPage, filteredAdmins.length)}
+                    </span>{' '}
+                    of <span className="font-medium">{isBackendPaginated ? totalItems : filteredAdmins.length}</span> results
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span className="sr-only">Previous</span>
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+
+                    {/* Page numbers */}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                      if (
+                        totalPages <= 7 ||
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => handlePageChange(page)}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === page
+                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                              }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      } else if (
+                        page === currentPage - 2 ||
+                        page === currentPage + 2
+                      ) {
+                        return (
+                          <span key={page} className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
+                    })}
+
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span className="sr-only">Next</span>
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          )}
 
           {filteredAdmins.length === 0 && (
             <div className="text-center py-12">

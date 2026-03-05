@@ -24,14 +24,14 @@ export const superadminApi = {
   getRecentActivities: () => apiClient.get<ApiResponse<RecentActivity[]>>('/superadmin/recent-activities'),
 
   // Companies Management
-  getCompanies: () => apiClient.get<PaginatedCompaniesResponse>('/superadmin/companies'),
+  getCompanies: (page: number = 1) => apiClient.get<PaginatedCompaniesResponse>(`/superadmin/companies?page=${page}`),
   getCompany: (id: number) => apiClient.get<ApiResponse<Company>>(`/superadmin/companies/${id}`),
   createCompany: (data: CreateCompanyRequest) => apiClient.post<ApiResponse<Company>>('/superadmin/companies', data),
   updateCompany: (id: number, data: UpdateCompanyRequest) => apiClient.put<ApiResponse<Company>>(`/superadmin/companies/${id}`, data),
   deleteCompany: (id: number) => apiClient.delete<ApiResponse<void>>(`/superadmin/companies/${id}`),
 
   // Company Users Management
-  getCompanyUsers: () => apiClient.get<PaginatedAdminsResponse>('/superadmin/company-users'),
+  getCompanyUsers: (page: number = 1) => apiClient.get<PaginatedAdminsResponse>(`/superadmin/company-users?page=${page}`),
   getCompanyUser: (id: number) => apiClient.get<ApiResponse<Admin>>(`/superadmin/company-users/${id}`),
   createCompanyUser: (data: CreateAdminRequest) => apiClient.post<ApiResponse<Admin>>('/superadmin/company-users', data),
   updateCompanyUser: (id: number, data: UpdateAdminRequest) => apiClient.put<ApiResponse<Admin>>(`/superadmin/company-users/${id}`, data),

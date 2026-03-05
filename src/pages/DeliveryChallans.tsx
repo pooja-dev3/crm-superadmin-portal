@@ -33,13 +33,13 @@ const DeliveryChallans: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; challanId: string | null; challanNumber: string }>({ isOpen: false, challanId: null, challanNumber: '' })
-  
+
   // Notification state
   const [showNotification, setShowNotification] = useState(false)
   const [notificationType, setNotificationType] = useState<NotificationType>('success')
   const [notificationTitle, setNotificationTitle] = useState('')
   const [notificationMessage, setNotificationMessage] = useState('')
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -60,11 +60,11 @@ const DeliveryChallans: React.FC = () => {
     try {
       const response = await superadminApi.getDeliveryChallans(page) as { success: boolean; data: any; pagination?: any }
       console.log('Delivery Challans API Response:', response)
-      
+
       // Handle real API response structure
       if (response.success && response.data) {
         let challansData: DeliveryChallanItem[] = []
-        
+
         if (Array.isArray(response.data)) {
           // Real API returns simple array: { success: true, data: [...] }
           challansData = response.data.map((challan: any) => ({
@@ -104,18 +104,18 @@ const DeliveryChallans: React.FC = () => {
             total: challan.total || '0.00'
           }))
         }
-        
+
         setChallans(challansData)
-        
+
         // Sort by created date (newest first) for both paginated and non-paginated responses
         challansData.sort((a, b) => {
           const dateA = new Date(a.createdDate)
           const dateB = new Date(b.createdDate)
           return dateB.getTime() - dateA.getTime() // Newest first
         })
-        
+
         setFilteredChallans(challansData)
-        
+
         // Handle pagination from backend if available, otherwise calculate locally
         if (response.pagination) {
           setCurrentPage(response.pagination.current_page)
@@ -131,7 +131,7 @@ const DeliveryChallans: React.FC = () => {
           setTotalItems(total)
           setIsBackendPaginated(false)
         }
-        
+
         // Extract unique companies
         const uniqueCompanies = Array.from(new Set(challansData.filter(challan => challan && challan.company).map(challan => challan.company)))
         setCompanies(uniqueCompanies)
@@ -177,7 +177,7 @@ const DeliveryChallans: React.FC = () => {
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page)
-      
+
       if (isBackendPaginated) {
         // Backend pagination - fetch new page data from API
         fetchChallans(page)
@@ -218,7 +218,7 @@ const DeliveryChallans: React.FC = () => {
     })
 
     setFilteredChallans(filtered)
-    
+
     // Reset to first page when filters change
     setCurrentPage(1)
   }, [challans, searchTerm, companyFilter, statusFilter])
@@ -380,6 +380,9 @@ const DeliveryChallans: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Sr No.
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Challan Number
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -412,8 +415,11 @@ const DeliveryChallans: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {getPaginatedData().filter(challan => challan).map((challan) => (
+              {getPaginatedData().filter(challan => challan).map((challan, index) => (
                 <tr key={challan.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {(currentPage - 1) * itemsPerPage + index + 1}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {challan.challanNumber}
                   </td>
@@ -433,15 +439,14 @@ const DeliveryChallans: React.FC = () => {
                     {challan.remaining_quantity || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      challan.status === 'delivered'
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${challan.status === 'delivered'
                         ? 'bg-green-100 text-green-800'
                         : challan.status === 'in_transit'
-                        ? 'bg-blue-200 text-blue-900'
-                        : challan.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
+                          ? 'bg-blue-200 text-blue-900'
+                          : challan.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                      }`}>
                       {getStatusIcon(challan.status)}
                       <span className="ml-1">{challan.status ? challan.status.replace('_', ' ') : 'Unknown'}</span>
                     </span>
@@ -522,22 +527,21 @@ const DeliveryChallans: React.FC = () => {
                       <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   </button>
-                  
+
                   {/* Page numbers */}
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <button
                       key={page}
                       onClick={() => handlePageChange(page)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        currentPage === page
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === page
                           ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
                           : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       {page}
                     </button>
                   ))}
-                  
+
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
@@ -571,7 +575,7 @@ const DeliveryChallans: React.FC = () => {
       {showViewModal && selectedChallan && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div 
+            <div
               className="fixed inset-0 transition-opacity"
               aria-hidden="true"
               onClick={handleCloseModal}
@@ -592,7 +596,7 @@ const DeliveryChallans: React.FC = () => {
                     <X className="h-6 w-6" />
                   </button>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -614,15 +618,14 @@ const DeliveryChallans: React.FC = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Status</label>
                       <div className="mt-1">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          selectedChallan.status === 'delivered'
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedChallan.status === 'delivered'
                             ? 'bg-green-100 text-green-800'
                             : selectedChallan.status === 'in_transit'
-                            ? 'bg-blue-200 text-blue-900'
-                            : selectedChallan.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
+                              ? 'bg-blue-200 text-blue-900'
+                              : selectedChallan.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
+                          }`}>
                           {getStatusIcon(selectedChallan.status)}
                           <span className="ml-1">{selectedChallan.status.replace('_', ' ')}</span>
                         </span>
@@ -653,7 +656,7 @@ const DeliveryChallans: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"

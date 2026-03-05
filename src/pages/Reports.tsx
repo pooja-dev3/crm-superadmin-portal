@@ -49,7 +49,7 @@ const Reports: React.FC = () => {
     try {
       setIsLoading(true)
       setError(null)
-      
+
       // Fetch all data in parallel
       const [
         companiesResponse,
@@ -68,22 +68,22 @@ const Reports: React.FC = () => {
       ])
 
       // Process data from responses
-      const companies = (companiesResponse as any)?.success ? 
+      const companies = (companiesResponse as any)?.success ?
         (Array.isArray((companiesResponse as any).data) ? (companiesResponse as any).data : (companiesResponse as any).data?.data || []) : []
-      
-      const orders = (ordersResponse as any)?.success ? 
+
+      const orders = (ordersResponse as any)?.success ?
         (Array.isArray((ordersResponse as any).data) ? (ordersResponse as any).data : (ordersResponse as any).data?.data || []) : []
-      
-      const challans = (challansResponse as any)?.success ? 
+
+      const challans = (challansResponse as any)?.success ?
         (Array.isArray((challansResponse as any).data) ? (challansResponse as any).data : (challansResponse as any).data?.data || []) : []
-      
-      const customers = (customersResponse as any)?.success ? 
+
+      const customers = (customersResponse as any)?.success ?
         (Array.isArray((customersResponse as any).data) ? (customersResponse as any).data : (customersResponse as any).data?.data || []) : []
-      
-      const admins = (adminsResponse as any)?.success ? 
+
+      const admins = (adminsResponse as any)?.success ?
         (Array.isArray((adminsResponse as any).data) ? (adminsResponse as any).data : (adminsResponse as any).data?.data || []) : []
-      
-      const parts = (partsResponse as any)?.success ? 
+
+      const parts = (partsResponse as any)?.success ?
         (Array.isArray((partsResponse as any).data) ? (partsResponse as any).data : (partsResponse as any).data?.data || []) : []
 
       // Calculate metrics
@@ -97,10 +97,10 @@ const Reports: React.FC = () => {
 
       // Generate monthly revenue data
       const monthlyRevenue = generateMonthlyRevenue(orders)
-      
+
       // Generate company performance data
       const companyPerformance = generateCompanyPerformance(orders, companies)
-      
+
       // Get recent orders
       const recentOrders = orders
         .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -156,14 +156,14 @@ const Reports: React.FC = () => {
       const revenue = monthOrders.reduce((sum: number, order: any) => sum + parseFloat(order.price || '0'), 0)
       return { month, amount: revenue }
     })
-    
+
     // Return last 6 months
     return monthlyData.slice(-6)
   }
 
   const generateCompanyPerformance = (orders: any[], companies: any[]) => {
     const performanceMap = new Map<string, { orders: number; revenue: number }>()
-    
+
     orders.forEach((order: any) => {
       const company = order.comp_name || order.customer?.name || 'Unknown'
       const current = performanceMap.get(company) || { orders: 0, revenue: 0 }
@@ -171,7 +171,7 @@ const Reports: React.FC = () => {
       current.revenue += parseFloat(order.price || '0')
       performanceMap.set(company, current)
     })
-    
+
     return Array.from(performanceMap.entries())
       .map(([company, data]) => ({ company, ...data }))
       .sort((a, b) => b.revenue - a.revenue)
@@ -183,7 +183,7 @@ const Reports: React.FC = () => {
       setIsExporting(true)
       // Create CSV content
       const csvContent = generateCSV()
-      
+
       // Download file
       const blob = new Blob([csvContent], { type: 'text/csv' })
       const url = window.URL.createObjectURL(blob)
@@ -204,7 +204,7 @@ const Reports: React.FC = () => {
 
   const generateCSV = () => {
     if (!reportData) return ''
-    
+
     const headers = ['Metric', 'Value']
     const rows = [
       ['Total Revenue', reportData.totalRevenue.toString()],
@@ -215,7 +215,7 @@ const Reports: React.FC = () => {
       ['Total Parts', reportData.totalParts.toString()],
       ['Total Delivery Challans', reportData.totalChallans.toString()]
     ]
-    
+
     return [headers, ...rows].map(row => row.join(',')).join('\n')
   }
 
@@ -249,200 +249,114 @@ const Reports: React.FC = () => {
     )
   }
 
-  const maxRevenue = Math.max(...reportData.monthlyRevenue.map(m => m.amount))
+  const maxRevenue = Math.max(...(reportData.monthlyRevenue.length > 0 ? reportData.monthlyRevenue.map(m => m.amount) : [1]))
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            System analytics and performance metrics
+    <div className="space-y-6 animate-fade-in-scale">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="animate-slide-in-up">
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Reports & Analytics</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            System performance and business metrics overview
           </p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 animate-slide-in-up" style={{ animationDelay: '100ms' }}>
+          {/* Pill-shaped Segmented Date Selector */}
+          <div className="flex bg-gray-100 p-1 rounded-full text-sm font-medium border border-gray-200 shadow-inner">
+            {[
+              { id: '7d', label: '7D' },
+              { id: '30d', label: '30D' },
+              { id: '90d', label: '90D' },
+              { id: '1y', label: '1Y' }
+            ].map(range => (
+              <button
+                key={range.id}
+                onClick={() => setTimeRange(range.id)}
+                className={`py-1.5 px-4 rounded-full transition-all duration-200 ${timeRange === range.id
+                  ? 'bg-white text-blue-700 shadow-sm ring-1 ring-black/5'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/50'
+                  }`}
+              >
+                {range.label}
+              </button>
+            ))}
+          </div>
           <button
             onClick={handleExport}
             disabled={isExporting}
-            className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all duration-200 shadow hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed group focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            <Download className="h-4 w-4" />
-            <span>{isExporting ? 'Exporting...' : 'Export'}</span>
+            <Download className="h-4 w-4 group-hover:-translate-y-0.5 transition-transform" />
+            <span className="font-medium text-sm">{isExporting ? 'Exporting...' : 'Export CSV'}</span>
           </button>
-          <div className="flex items-center space-x-2">
-            <Calendar className="h-5 w-5 text-gray-400" />
-            <select
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
-            >
-              <option value="7d">Last 7 days</option>
-              <option value="30d">Last 30 days</option>
-              <option value="90d">Last 90 days</option>
-              <option value="1y">Last year</option>
-            </select>
-          </div>
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="p-3 bg-green-100 rounded-md">
-                  <TrendingUp className="h-6 w-6 text-green-600" />
+      {/* Key Metrics Cards with Hover Effects */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 animate-slide-in-up" style={{ animationDelay: '200ms' }}>
+        {[
+          { title: 'Total Revenue', value: `₹${reportData.totalRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-100/50', border: 'hover:border-emerald-300' },
+          { title: 'Total Orders', value: reportData.totalOrders.toLocaleString(), icon: ShoppingCart, color: 'text-blue-600', bg: 'bg-blue-100/50', border: 'hover:border-blue-300' },
+          { title: 'Companies', value: reportData.totalCompanies, icon: Users, color: 'text-purple-600', bg: 'bg-purple-100/50', border: 'hover:border-purple-300' },
+          { title: 'Challans', value: reportData.totalChallans, icon: FileText, color: 'text-orange-600', bg: 'bg-orange-100/50', border: 'hover:border-orange-300' },
+          { title: 'Customers', value: reportData.totalCustomers, icon: Users, color: 'text-teal-600', bg: 'bg-teal-100/50', border: 'hover:border-teal-300' },
+          { title: 'Parts', value: reportData.totalParts, icon: BarChart3, color: 'text-indigo-600', bg: 'bg-indigo-100/50', border: 'hover:border-indigo-300' }
+        ].map((metric, idx) => (
+          <div key={metric.title} className={`bg-white overflow-hidden shadow-sm rounded-xl border border-gray-100 transition-all duration-300 hover:shadow-md transform hover:-translate-y-1 ${metric.border}`}>
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className={`p-3 rounded-xl ${metric.bg}`}>
+                    <metric.icon className={`h-6 w-6 ${metric.color}`} />
+                  </div>
                 </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Total Revenue
+                <div className="ml-4 w-0 flex-1">
+                  <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">
+                    {metric.title}
                   </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    ₹{reportData.totalRevenue.toLocaleString()}
+                  <dd className="text-xl font-bold text-gray-900 mt-1">
+                    {metric.value}
                   </dd>
-                </dl>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="p-3 bg-blue-200 rounded-md">
-                  <ShoppingCart className="h-6 w-6 text-blue-900" />
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Total Orders
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {reportData.totalOrders.toLocaleString()}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="p-3 bg-purple-100 rounded-md">
-                  <Users className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Companies
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {reportData.totalCompanies}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="p-3 bg-orange-100 rounded-md">
-                  <FileText className="h-6 w-6 text-orange-600" />
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Challans
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {reportData.totalChallans}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="p-3 bg-teal-100 rounded-md">
-                  <Users className="h-6 w-6 text-teal-600" />
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Customers
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {reportData.totalCustomers}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="p-3 bg-indigo-100 rounded-md">
-                  <BarChart3 className="h-6 w-6 text-indigo-600" />
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Parts
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {reportData.totalParts}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Monthly Revenue Chart */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Monthly Revenue</h3>
-          <div className="space-y-3">
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-in-up" style={{ animationDelay: '300ms' }}>
+        {/* Modern Vertical Bar Chart for Monthly Revenue */}
+        <div className="bg-white shadow-sm border border-gray-100 rounded-xl p-6 flex flex-col h-[380px]">
+          <h3 className="text-md font-bold text-gray-800 mb-6 flex items-center">
+            <TrendingUp className="h-5 w-5 mr-2 text-blue-500" />
+            Revenue Trend (Last 6 Months)
+          </h3>
+          <div className="flex-1 flex items-end justify-between space-x-2 pt-4 relative border-b border-gray-200 pb-2">
+            {/* Horizontal Grid lines */}
+            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-2">
+              {[0, 1, 2, 3, 4].map(i => (
+                <div key={i} className="border-t border-gray-100 w-full h-0"></div>
+              ))}
+            </div>
+
             {reportData.monthlyRevenue.map((month) => {
-              const percentage = (month.amount / maxRevenue) * 100
+              const percentage = maxRevenue > 0 ? (month.amount / maxRevenue) * 100 : 0
               return (
-                <div key={month.month} className="flex items-center">
-                  <div className="w-12 text-sm font-medium text-gray-500">
-                    {month.month}
-                  </div>
-                  <div className="flex-1 mx-4">
-                    <div className="w-full bg-gray-200 rounded-full h-4">
-                      <div
-                        className="bg-blue-900 h-4 rounded-full transition-all duration-300"
-                        style={{ width: `${percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div className="w-20 text-sm font-medium text-gray-900 text-right">
+                <div key={month.month} className="flex-1 flex flex-col items-center group relative z-10">
+                  {/* Tooltip on hover */}
+                  <div className="absolute -top-10 opacity-0 group-hover:opacity-100 bg-gray-800 text-white text-xs py-1 px-2 rounded tracking-wider shadow pointer-events-none transition-opacity font-medium whitespace-nowrap">
                     ₹{month.amount.toLocaleString()}
+                  </div>
+                  {/* Vertical Bar */}
+                  <div className="w-full flex justify-center h-full items-end pb-1">
+                    <div
+                      className="w-4/5 sm:w-12 bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-sm transition-all duration-700 ease-out group-hover:opacity-80"
+                      style={{ height: `${Math.max(percentage, 2)}%` }} // Give at least 2% height so empty months still show a sliver
+                    ></div>
+                  </div>
+                  <div className="mt-2 text-xs font-semibold text-gray-400">
+                    {month.month}
                   </div>
                 </div>
               )
@@ -450,141 +364,205 @@ const Reports: React.FC = () => {
           </div>
         </div>
 
-        {/* Company Performance */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Top Performing Companies</h3>
-          <div className="space-y-4">
+        {/* Improved Company Performance Ranking */}
+        <div className="bg-white shadow-sm border border-gray-100 rounded-xl p-6 flex flex-col h-[380px]">
+          <h3 className="text-md font-bold text-gray-800 mb-6 flex items-center">
+            <Users className="h-5 w-5 mr-2 text-purple-500" />
+            Top Performing Companies
+          </h3>
+          <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
             {reportData.companyPerformance.map((company, index) => (
-              <div key={company.company} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-200 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-medium text-blue-900">#{index + 1}</span>
+              <div key={company.company} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                <div className="flex items-center space-x-4">
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-sm ${index === 0 ? 'bg-yellow-100 text-yellow-700' :
+                    index === 1 ? 'bg-gray-100 text-gray-600' :
+                      index === 2 ? 'bg-orange-100 text-orange-700' : 'bg-blue-50 text-blue-600'
+                    }`}>
+                    #{index + 1}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{company.company}</p>
-                    <p className="text-xs text-gray-500">{company.orders} orders</p>
+                    <p className="text-sm font-bold text-gray-800">{company.company}</p>
+                    <p className="text-xs font-medium text-gray-400 flex items-center mt-0.5">
+                      <ShoppingCart className="h-3 w-3 mr-1" /> {company.orders} orders
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded inline-block">
                     ₹{company.revenue.toLocaleString()}
                   </p>
-                  <p className="text-xs text-gray-500">revenue</p>
                 </div>
               </div>
             ))}
+            {reportData.companyPerformance.length === 0 && (
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm italic">
+                No company data available for this timeframe
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Recent Orders Table */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Orders</h3>
+      {/* Stacked Progress Bar for Order Status & Additional Metrics */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-slide-in-up" style={{ animationDelay: '400ms' }}>
+        {/* Visual Priority Status Breakdown */}
+        <div className="bg-white shadow-sm border border-gray-100 rounded-xl p-6 lg:col-span-2">
+          <h3 className="text-md font-bold text-gray-800 mb-6 flex items-center">
+            <FileText className="h-5 w-5 mr-2 text-orange-500" />
+            Order Status Distribution
+          </h3>
+
+          {(() => {
+            const { pending, processing, completed, cancelled } = reportData.statusBreakdown;
+            const total = pending + processing + completed + cancelled;
+            const getPct = (val: number) => total > 0 ? (val / total) * 100 : 0;
+
+            return (
+              <div className="space-y-6">
+                {/* Stacked Bar */}
+                <div className="w-full flex h-4 rounded-full overflow-hidden bg-gray-100 shadow-inner">
+                  {total > 0 ? (
+                    <>
+                      <div className="bg-green-500 transition-all duration-500" style={{ width: `${getPct(completed)}%` }} title={`Completed: ${completed}`}></div>
+                      <div className="bg-blue-500 transition-all duration-500" style={{ width: `${getPct(processing)}%` }} title={`Processing: ${processing}`}></div>
+                      <div className="bg-yellow-400 transition-all duration-500" style={{ width: `${getPct(pending)}%` }} title={`Pending: ${pending}`}></div>
+                      <div className="bg-red-500 transition-all duration-500" style={{ width: `${getPct(cancelled)}%` }} title={`Cancelled: ${cancelled}`}></div>
+                    </>
+                  ) : (
+                    <div className="w-full bg-gray-200"></div>
+                  )}
+                </div>
+
+                {/* Legend Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+                  <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
+                    <div className="flex items-center justify-center mb-1">
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500 mr-2 shadow-sm"></span>
+                      <span className="text-xs font-semibold text-gray-500 uppercase">Completed</span>
+                    </div>
+                    <div className="text-xl font-bold text-gray-800">{completed}</div>
+                    <div className="text-xs font-semibold text-gray-400">{Math.round(getPct(completed))}%</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
+                    <div className="flex items-center justify-center mb-1">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500 mr-2 shadow-sm"></span>
+                      <span className="text-xs font-semibold text-gray-500 uppercase">Processing</span>
+                    </div>
+                    <div className="text-xl font-bold text-gray-800">{processing}</div>
+                    <div className="text-xs font-semibold text-gray-400">{Math.round(getPct(processing))}%</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
+                    <div className="flex items-center justify-center mb-1">
+                      <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 mr-2 shadow-sm"></span>
+                      <span className="text-xs font-semibold text-gray-500 uppercase">Pending</span>
+                    </div>
+                    <div className="text-xl font-bold text-gray-800">{pending}</div>
+                    <div className="text-xs font-semibold text-gray-400">{Math.round(getPct(pending))}%</div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
+                    <div className="flex items-center justify-center mb-1">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 mr-2 shadow-sm"></span>
+                      <span className="text-xs font-semibold text-gray-500 uppercase">Cancelled</span>
+                    </div>
+                    <div className="text-xl font-bold text-gray-800">{cancelled}</div>
+                    <div className="text-xs font-semibold text-gray-400">{Math.round(getPct(cancelled))}%</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Mini Performance Cards */}
+        <div className="space-y-4">
+          <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl p-5 text-white shadow-lg relative overflow-hidden group">
+            <div className="absolute right-0 top-0 w-24 h-24 bg-white opacity-10 rounded-full -mr-10 -mt-10 transform group-hover:scale-110 transition-transform duration-500"></div>
+            <h4 className="text-sm font-medium text-indigo-100 mb-1">Avg Order Value</h4>
+            <div className="text-3xl font-bold tracking-tight">₹{reportData.totalOrders > 0 ? Math.round(reportData.totalRevenue / reportData.totalOrders).toLocaleString() : 0}</div>
+            <div className="mt-4 flex items-center text-xs text-indigo-100 font-medium">
+              <TrendingUp className="h-4 w-4 mr-1" /> Health Metric
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl p-5 text-white shadow-lg relative overflow-hidden group">
+            <div className="absolute right-0 top-0 w-24 h-24 bg-white opacity-10 rounded-full -mr-10 -mt-10 transform group-hover:scale-110 transition-transform duration-500"></div>
+            <h4 className="text-sm font-medium text-emerald-100 mb-1">Delivery Fulfillment</h4>
+            <div className="text-3xl font-bold tracking-tight">{reportData.totalOrders > 0 ? Math.round((reportData.totalChallans / reportData.totalOrders) * 100) : 0}%</div>
+            <div className="mt-4 flex items-center text-xs text-emerald-100 font-medium">
+              <FileText className="h-4 w-4 mr-1" /> Challans to Orders Ratio
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Styled Recent Orders Table */}
+      <div className="bg-white shadow-sm border border-gray-100 rounded-xl overflow-hidden animate-slide-in-up" style={{ animationDelay: '500ms' }}>
+        <div className="px-6 py-5 border-b border-gray-200 bg-gray-50/50 flex justify-between items-center">
+          <h3 className="text-md font-bold text-gray-800 flex items-center">
+            <Calendar className="h-5 w-5 mr-2 text-gray-500" />
+            Most Recent Orders
+          </h3>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-white">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-16">
+                  Sr No.
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                   PO Number
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                   Customer
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                   Amount
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                   Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {reportData.recentOrders.map((order) => (
-                <tr key={order.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+            <tbody className="bg-white divide-y divide-gray-100">
+              {reportData.recentOrders.length > 0 ? reportData.recentOrders.map((order, index) => (
+                <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500">
+                    {index + 1}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                     {order.po_no}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
                     {order.customer}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    {new Date(order.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800">
                     ₹{order.amount.toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      order.status === 'Received' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
+                    <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full border shadow-sm ${order.status === 'Received'
+                      ? 'bg-green-50 text-green-700 border-green-200'
+                      : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                      }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${order.status === 'Received' ? 'bg-green-500' : 'bg-yellow-500'}`}></span>
                       {order.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(order.created_at).toLocaleDateString()}
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
+                    No recent orders available.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Status Breakdown */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Order Status Breakdown</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-yellow-600">
-              {reportData.statusBreakdown.pending}
-            </div>
-            <div className="text-sm text-gray-500">Pending</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">
-              {reportData.statusBreakdown.processing}
-            </div>
-            <div className="text-sm text-gray-500">Processing</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">
-              {reportData.statusBreakdown.completed}
-            </div>
-            <div className="text-sm text-gray-500">Completed</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-red-600">
-              {reportData.statusBreakdown.cancelled}
-            </div>
-            <div className="text-sm text-gray-500">Cancelled</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Additional Analytics */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">System Overview</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">
-              {Math.round((reportData.totalOrders / reportData.totalCompanies) * 10) / 10}
-            </div>
-            <div className="text-sm text-gray-500">Avg Orders per Company</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-900">
-              ₹{Math.round(reportData.totalRevenue / reportData.totalOrders)}
-            </div>
-            <div className="text-sm text-gray-500">Avg Order Value</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">
-              {Math.round((reportData.totalChallans / reportData.totalOrders) * 100)}%
-            </div>
-            <div className="text-sm text-gray-500">Delivery Rate</div>
-          </div>
         </div>
       </div>
     </div>

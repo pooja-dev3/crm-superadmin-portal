@@ -41,19 +41,19 @@ const Customers: React.FC = () => {
     try {
       const response = await superadminApi.getCustomers() as { success: boolean; data: any }
       console.log('Customers API Response:', response)
-      
+
       // Handle both paginated and simple array responses
       if (response.success) {
         if (Array.isArray(response.data)) {
           // Real API returns simple array: { success: true, data: [...] }
-          const sortedCustomers = response.data.sort((a: any, b: any) => 
+          const sortedCustomers = response.data.sort((a: any, b: any) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
           setCustomers(sortedCustomers)
           setFilteredCustomers(sortedCustomers)
         } else if (response.data && Array.isArray(response.data.data)) {
           // Mock API returns paginated: { success: true, data: { data: [...] } }
-          const sortedCustomers = response.data.data.sort((a: any, b: any) => 
+          const sortedCustomers = response.data.data.sort((a: any, b: any) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
           setCustomers(sortedCustomers)
@@ -169,6 +169,9 @@ const Customers: React.FC = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Sr No.
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Customer
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -189,8 +192,11 @@ const Customers: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredCustomers.map((customer) => (
+                {filteredCustomers.map((customer, index) => (
                   <tr key={customer.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {index + 1}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0">
@@ -250,39 +256,39 @@ const Customers: React.FC = () => {
             <p className="text-gray-500">No customers found matching your criteria.</p>
           </div>
         )}
-      
-      
-      {/* Add Customer Modal */}
-      {showAddModal && (
-        <AddCustomerModal
-          isOpen={showAddModal}
-          onClose={() => setShowAddModal(false)}
-          onSuccess={handleAddSuccess}
-        />
-      )}
 
-      {/* Edit Customer Modal */}
-      {showEditModal && (
-        <EditCustomerModal
-          isOpen={showEditModal}
-          onClose={handleCloseEditModal}
-          onSuccess={handleEditSuccess}
-          customer={selectedCustomer}
-        />
-      )}
 
-      {/* Delete Confirmation Modal */}
-      <ConfirmModal
-        isOpen={deleteConfirm.isOpen}
-        onClose={() => setDeleteConfirm({ isOpen: false, customerId: null, customerName: '' })}
-        onConfirm={confirmDeleteCustomer}
-        title="Delete Customer"
-        message={`Are you sure you want to delete customer "${deleteConfirm.customerName}"? This action cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
-      />
-    
+        {/* Add Customer Modal */}
+        {showAddModal && (
+          <AddCustomerModal
+            isOpen={showAddModal}
+            onClose={() => setShowAddModal(false)}
+            onSuccess={handleAddSuccess}
+          />
+        )}
+
+        {/* Edit Customer Modal */}
+        {showEditModal && (
+          <EditCustomerModal
+            isOpen={showEditModal}
+            onClose={handleCloseEditModal}
+            onSuccess={handleEditSuccess}
+            customer={selectedCustomer}
+          />
+        )}
+
+        {/* Delete Confirmation Modal */}
+        <ConfirmModal
+          isOpen={deleteConfirm.isOpen}
+          onClose={() => setDeleteConfirm({ isOpen: false, customerId: null, customerName: '' })}
+          onConfirm={confirmDeleteCustomer}
+          title="Delete Customer"
+          message={`Are you sure you want to delete customer "${deleteConfirm.customerName}"? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          type="danger"
+        />
+
       </div>
     </>
   )

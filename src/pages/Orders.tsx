@@ -36,17 +36,17 @@ const Orders: React.FC = () => {
     try {
       const response = await superadminApi.getOrders() as { success: boolean; data: any }
       console.log('Orders API Response:', response) // Debug log
-      
+
       // Handle both paginated and simple array responses
       if (response.success) {
         let ordersData: Order[] = []
-        
+
         if (Array.isArray(response.data)) {
           // Real API returns simple array: { success: true, data: [...] }
           console.log('Processing real API response with array data')
           console.log('Raw orders data from API:', response.data)
           console.log('Raw order IDs from API:', response.data.map((o: any) => o.id))
-          ordersData = response.data.sort((a: any, b: any) => 
+          ordersData = response.data.sort((a: any, b: any) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
           console.log('Orders data after sorting:', ordersData)
@@ -56,16 +56,16 @@ const Orders: React.FC = () => {
           console.log('Processing mock API response with paginated data')
           console.log('Raw paginated data from API:', response.data.data)
           console.log('Raw paginated order IDs:', response.data.data.map((o: any) => o.id))
-          ordersData = response.data.data.sort((a: any, b: any) => 
+          ordersData = response.data.data.sort((a: any, b: any) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
           console.log('Orders data after sorting:', ordersData)
           console.log('Sorted paginated order IDs:', ordersData.map((o: any) => o.id))
         }
-        
+
         console.log('Orders Data after fetch:', ordersData) // Debug log
         console.log('Orders Data length:', ordersData.length) // Debug log
-        
+
         if (ordersData.length > 0) {
           // Map API response to display format
           const validOrders: OrderDisplay[] = ordersData.map((order: Order) => {
@@ -90,16 +90,16 @@ const Orders: React.FC = () => {
               originalOrder: order
             }
           })
-          
+
           console.log('Valid orders after mapping:', validOrders)
           console.log('Valid orders length:', validOrders.length)
           console.log('Valid order IDs:', validOrders.map(o => `${o.id}(${o.orderNumber})`))
-          
+
           setOrders(validOrders)
           setFilteredOrders(validOrders)
-          
+
           console.log('Orders state updated')
-          
+
           // Extract unique companies for filter dropdown
           const uniqueCompanies = Array.from(new Set(ordersData
             .filter((order: Order) => order.customer?.name)
@@ -172,7 +172,7 @@ const Orders: React.FC = () => {
     }
 
     setFilteredOrders(filtered)
-    
+
     // Reset to first page when filters change
     setCurrentPage(1)
   }, [orders, searchTerm, companyFilter, statusFilter, dateFilter])
@@ -194,7 +194,7 @@ const Orders: React.FC = () => {
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page)
-      
+
       if (isBackendPaginated) {
         // Backend pagination - fetch new page data from API
         fetchOrdersWithPage(page)
@@ -211,20 +211,20 @@ const Orders: React.FC = () => {
     try {
       const response = await superadminApi.getOrders() as { success: boolean; data: any }
       console.log('Orders API Response (page fetch):', response)
-      
+
       if (response.success) {
         let ordersData: Order[] = []
-        
+
         if (Array.isArray(response.data)) {
-          ordersData = response.data.sort((a: any, b: any) => 
+          ordersData = response.data.sort((a: any, b: any) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
         } else if (response.data && Array.isArray(response.data.data)) {
-          ordersData = response.data.data.sort((a: any, b: any) => 
+          ordersData = response.data.data.sort((a: any, b: any) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
         }
-        
+
         if (ordersData.length > 0) {
           const validOrders: OrderDisplay[] = ordersData.map((order: Order) => ({
             id: order.id.toString(),
@@ -247,10 +247,10 @@ const Orders: React.FC = () => {
             wipStock: 0, // Default value since not available in Order type
             originalOrder: order
           }))
-          
+
           setOrders(validOrders)
           setFilteredOrders(validOrders)
-          
+
           // Update pagination state
           if (response.data && response.data.pagination) {
             setCurrentPage(response.data.pagination.current_page)
@@ -298,26 +298,26 @@ const Orders: React.FC = () => {
     if (deleteConfirm.orderId) {
       console.log('Attempting to delete order with ID:', deleteConfirm.orderId)
       console.log('Order ID type:', typeof deleteConfirm.orderId)
-      
+
       try {
         const orderIdNum = parseInt(deleteConfirm.orderId)
         console.log('Parsed order ID as number:', orderIdNum)
-        
+
         const response = await superadminApi.deleteOrder(orderIdNum) as { success: boolean }
         console.log('Delete API Response:', response)
         console.log('Response success property:', response.success)
         console.log('Response type:', typeof response)
-        
+
         if (response.success) {
           console.log('Delete successful - showing success toast')
           // Show success message
           addToast('Order deleted successfully', 'success')
-          
+
           console.log('About to refresh orders list')
           // Refresh orders list
           await fetchOrders()
           console.log('Orders list refreshed')
-          
+
           // WORKAROUND: If backend didn't actually delete, remove from UI locally
           setTimeout(() => {
             console.log('Checking if deleted order ID', deleteConfirm.orderId, 'is still in orders list')
@@ -325,22 +325,22 @@ const Orders: React.FC = () => {
             console.log('Deleted order still exists in UI:', stillExists)
             console.log('Current orders count:', orders.length)
             console.log('Current orders IDs:', orders.map(o => o.id))
-            
+
             if (stillExists) {
               console.log('Backend delete failed - removing from UI locally as workaround')
               // Remove the deleted order from the local state
               const updatedOrders = orders.filter(order => order.id !== deleteConfirm.orderId)
               const updatedFilteredOrders = filteredOrders.filter(order => order.id !== deleteConfirm.orderId)
-              
+
               setOrders(updatedOrders)
               setFilteredOrders(updatedFilteredOrders)
-              
+
               console.log('Removed order from UI locally')
               console.log('Updated orders count:', updatedOrders.length)
               addToast('Order removed from list (backend delete issue detected)', 'info')
             }
           }, 500)
-          
+
         } else {
           console.error('Delete failed:', response)
           addToast('Failed to delete order: ' + ((response as any).message || 'Unknown error'), 'error')
@@ -465,6 +465,9 @@ const Orders: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Sr No.
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   PO Number
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -512,8 +515,11 @@ const Orders: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {getPaginatedData().map((order) => (
+              {getPaginatedData().map((order, index) => (
                 <tr key={order.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {(currentPage - 1) * itemsPerPage + index + 1}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {order.orderNumber}
                   </td>
@@ -554,15 +560,14 @@ const Orders: React.FC = () => {
                     {order.invNo}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      order.status === 'completed'
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${order.status === 'completed'
                         ? 'bg-green-100 text-green-800'
                         : order.status === 'processing'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : order.status === 'pending'
-                        ? 'bg-blue-200 text-blue-900'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : order.status === 'pending'
+                            ? 'bg-blue-200 text-blue-900'
+                            : 'bg-red-100 text-red-800'
+                      }`}>
                       {order.status}
                     </span>
                   </td>
@@ -638,22 +643,21 @@ const Orders: React.FC = () => {
                       <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   </button>
-                  
+
                   {/* Page numbers */}
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <button
                       key={page}
                       onClick={() => handlePageChange(page)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        currentPage === page
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === page
                           ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
                           : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       {page}
                     </button>
                   ))}
-                  
+
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
@@ -687,7 +691,7 @@ const Orders: React.FC = () => {
       {showViewModal && selectedOrder && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div 
+            <div
               className="fixed inset-0 transition-opacity"
               aria-hidden="true"
               onClick={handleCloseModal}
@@ -708,7 +712,7 @@ const Orders: React.FC = () => {
                     <X className="h-6 w-6" />
                   </button>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -755,15 +759,14 @@ const Orders: React.FC = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Status</label>
                       <div className="mt-1">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          selectedOrder.status === 'completed'
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedOrder.status === 'completed'
                             ? 'bg-green-100 text-green-800'
                             : selectedOrder.status === 'processing'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : selectedOrder.status === 'pending'
-                            ? 'bg-blue-200 text-blue-900'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : selectedOrder.status === 'pending'
+                                ? 'bg-blue-200 text-blue-900'
+                                : 'bg-red-100 text-red-800'
+                          }`}>
                           {selectedOrder.status}
                         </span>
                       </div>
@@ -819,7 +822,7 @@ const Orders: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"

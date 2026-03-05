@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { X, Eye, EyeOff } from 'lucide-react'
 import { adminApi, type Admin, type UpdateAdminRequest } from '../services/admin'
 import { superadminApi } from '../services/superadminApi'
+import type { PaginatedCompaniesResponse } from '../services/companies'
 import type { ApiResponse } from '../types/api'
 import { useToast } from '../contexts/ToastContext'
 
@@ -62,9 +63,9 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
 
   const fetchCompanies = async () => {
     try {
-      const response = await superadminApi.getCompanies() as ApiResponse<any[]>
-      if (response.success && Array.isArray(response.data)) {
-        setCompanies(response.data)
+      const response = await superadminApi.getCompanies() as PaginatedCompaniesResponse
+      if (response.success && response.data && Array.isArray(response.data.data)) {
+        setCompanies(response.data.data)
       }
     } catch (error) {
       console.error('Error fetching companies:', error)
@@ -171,9 +172,11 @@ const EditAdminModal: React.FC<EditAdminModalProps> = ({ isOpen, onClose, onSucc
 
       const response = await superadminApi.updateCompanyUser(admin.id, updateData) as ApiResponse<any>
       if (response.success) {
-        // If new password is provided, reset it
+        // Password update is now handled within the same call if UpdateAdminRequest includes it,
+        // but based on current implementation plan, we keep it separate or merged.
+        // Actually, since I added 'password' to UpdateAdminRequest, I can merge it.
         if (newPassword) {
-          await superadminApi.updateCompanyUser(admin.id, { password: newPassword })
+          await superadminApi.updateCompanyUser(admin.id, { ...updateData, password: newPassword })
         }
         addToast('Admin updated successfully', 'success')
         onSuccess()

@@ -27,18 +27,18 @@ const CompanyAdmins: React.FC = () => {
     try {
       const response = await superadminApi.getCompanyUsers() as { success: boolean; data: any }
       console.log('Company Admins API Response:', response)
-      
+
       // Handle real API structure only
       let adminData: any[] = []
-      
+
       if (response.success && Array.isArray(response.data)) {
         // Real API returns simple array in response.data
         adminData = response.data
       }
-      
+
       // Sort by created_at date (latest first)
       adminData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      
+
       setAdmins(adminData)
       setFilteredAdmins(adminData)
     } catch (error) {
@@ -66,14 +66,14 @@ const CompanyAdmins: React.FC = () => {
 
     // Apply status filter
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(admin => 
+      filtered = filtered.filter(admin =>
         statusFilter === 'active' ? admin.is_active : !admin.is_active
       )
     }
 
     // Apply company filter
     if (companyFilter !== 'all') {
-      filtered = filtered.filter(admin => 
+      filtered = filtered.filter(admin =>
         admin.company && admin.company.comp_name === companyFilter
       )
     }
@@ -84,7 +84,7 @@ const CompanyAdmins: React.FC = () => {
   const handleToggleStatus = async (adminId: number) => {
     const admin = admins.find(a => a.id === adminId)
     const currentStatus = admin?.is_active
-    
+
     try {
       const response = await superadminApi.updateCompanyUser(adminId, { is_active: !currentStatus }) as { success: boolean }
       if (response.success) {
@@ -186,215 +186,212 @@ const CompanyAdmins: React.FC = () => {
           </button>
         </div>
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
+        {/* Filters */}
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search admins..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                />
               </div>
-              <input
-                type="text"
-                placeholder="Search admins..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
-              />
+            </div>
+            <div>
+              <select
+                value={companyFilter}
+                onChange={(e) => setCompanyFilter(e.target.value)}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+              >
+                <option value="all">All Companies</option>
+                {Array.from(new Set(admins.filter(admin => admin.company).map(admin => admin.company.comp_name)))
+                  .sort()
+                  .map(companyName => (
+                    <option key={companyName} value={companyName}>
+                      {companyName}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
             </div>
           </div>
-          <div>
-            <select
-              value={companyFilter}
-              onChange={(e) => setCompanyFilter(e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
-            >
-              <option value="all">All Companies</option>
-              {Array.from(new Set(admins.filter(admin => admin.company).map(admin => admin.company.comp_name)))
-                .sort()
-                .map(companyName => (
-                  <option key={companyName} value={companyName}>
-                    {companyName}
-                  </option>
-                ))}
-            </select>
-          </div>
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
         </div>
-      </div>
 
-      {/* Admins Table */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Admin
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Phone
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Company
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created Date
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredAdmins.map((admin) => (
-                <tr key={admin.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-blue-900 flex items-center justify-center">
-                          <span className="text-white text-sm font-medium">
-                            {admin.name.split(' ').map((n: string) => n[0]).join('')}
-                          </span>
+        {/* Admins Table */}
+        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Admin
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Phone
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Company
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Created Date
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredAdmins.map((admin) => (
+                  <tr key={admin.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <div className="h-10 w-10 rounded-full bg-blue-900 flex items-center justify-center">
+                            <span className="text-white text-sm font-medium">
+                              {admin.name.split(' ').map((n: string) => n[0]).join('')}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{admin.name}</div>
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{admin.name}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {admin.email}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {admin.phone}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {admin.company ? admin.company.comp_name : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${admin.role === 'admin'
+                          ? 'bg-blue-100 text-blue-800'
+                          : admin.role === 'supervisor'
+                            ? 'bg-purple-100 text-purple-800'
+                            : admin.role === 'operator'
+                              ? 'bg-gray-100 text-gray-800'
+                              : admin.role === 'superadmin'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800'
+                        }`}>
+                        {admin.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${admin.is_active
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                        }`}>
+                        {admin.is_active ? (
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                        ) : (
+                          <XCircle className="w-4 h-4 mr-1" />
+                        )}
+                        {admin.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(admin.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-2">
+                        <button
+                          onClick={() => handleEditAdmin(admin)}
+                          className="text-blue-600 hover:text-blue-900 p-1"
+                          title="Edit Admin"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAdmin(admin.id, admin.name)}
+                          className="text-red-600 hover:text-red-900 p-1"
+                          title="Delete Admin"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleStatus(admin.id)}
+                          className={`p-1 ${admin.is_active
+                              ? 'text-red-600 hover:text-red-900'
+                              : 'text-green-600 hover:text-green-900'
+                            }`}
+                          title={admin.is_active ? 'Deactivate Admin' : 'Activate Admin'}
+                        >
+                          <UserX className="h-4 w-4" />
+                        </button>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {admin.email}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {admin.phone}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {admin.company ? admin.company.comp_name : 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      admin.role === 'admin' 
-                        ? 'bg-blue-100 text-blue-800'
-                        : admin.role === 'supervisor'
-                        ? 'bg-purple-100 text-purple-800'
-                        : admin.role === 'operator'
-                        ? 'bg-gray-100 text-gray-800'
-                        : admin.role === 'superadmin'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {admin.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      admin.is_active
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {admin.is_active ? (
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                      ) : (
-                        <XCircle className="w-4 h-4 mr-1" />
-                      )}
-                      {admin.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(admin.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={() => handleEditAdmin(admin)}
-                        className="text-blue-600 hover:text-blue-900 p-1"
-                        title="Edit Admin"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteAdmin(admin.id, admin.name)}
-                        className="text-red-600 hover:text-red-900 p-1"
-                        title="Delete Admin"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleToggleStatus(admin.id)}
-                        className={`p-1 ${
-                          admin.is_active
-                            ? 'text-red-600 hover:text-red-900'
-                            : 'text-green-600 hover:text-green-900'
-                        }`}
-                        title={admin.is_active ? 'Deactivate Admin' : 'Activate Admin'}
-                      >
-                        <UserX className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {filteredAdmins.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No company admins found matching your criteria.</p>
+            </div>
+          )}
         </div>
 
-        {filteredAdmins.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No company admins found matching your criteria.</p>
-          </div>
+        {/* Add Admin Modal */}
+        {showAddModal && (
+          <AddAdminModal
+            isOpen={showAddModal}
+            onClose={() => setShowAddModal(false)}
+            onSuccess={handleAddSuccess}
+          />
         )}
-      </div>
 
-      {/* Add Admin Modal */}
-      {showAddModal && (
-        <AddAdminModal
-          isOpen={showAddModal}
-          onClose={() => setShowAddModal(false)}
-          onSuccess={handleAddSuccess}
+        {/* Edit Admin Modal */}
+        {showEditModal && selectedAdmin && (
+          <EditAdminModal
+            isOpen={showEditModal}
+            onClose={() => setShowEditModal(false)}
+            onSuccess={handleEditSuccess}
+            admin={selectedAdmin}
+          />
+        )}
+
+        {/* Delete Confirmation Modal */}
+        <ConfirmModal
+          isOpen={deleteConfirm.isOpen}
+          onClose={() => setDeleteConfirm({ isOpen: false, adminId: null, adminName: '' })}
+          onConfirm={confirmDeleteAdmin}
+          title="Delete Admin"
+          message={`Are you sure you want to delete admin "${deleteConfirm.adminName}"? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          type="danger"
         />
-      )}
-
-      {/* Edit Admin Modal */}
-      {showEditModal && selectedAdmin && (
-        <EditAdminModal
-          isOpen={showEditModal}
-          onClose={() => setShowEditModal(false)}
-          onSuccess={handleEditSuccess}
-          admin={selectedAdmin}
-        />
-      )}
-
-      {/* Delete Confirmation Modal */}
-      <ConfirmModal
-        isOpen={deleteConfirm.isOpen}
-        onClose={() => setDeleteConfirm({ isOpen: false, adminId: null, adminName: '' })}
-        onConfirm={confirmDeleteAdmin}
-        title="Delete Admin"
-        message={`Are you sure you want to delete admin "${deleteConfirm.adminName}"? This action cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
-      />
       </div>
     </>
   )

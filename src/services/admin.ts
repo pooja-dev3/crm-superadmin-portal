@@ -36,6 +36,9 @@ export interface UpdateAdminRequest {
   department?: string
   role?: string
   is_active?: boolean
+  password?: string
+  comp_name?: string
+  comp_code?: string
 }
 
 export interface PaginatedAdminsResponse {

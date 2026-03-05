@@ -51,6 +51,7 @@ export interface DeliveryChallan {
   part_no?: string
   hsn_code?: string
   unit_rate?: string
+  nature_of_processing?: string
 }
 
 export interface CreateDeliveryChallanRequest {
@@ -90,6 +91,7 @@ export interface UpdateDeliveryChallanRequest {
   notes?: string | null
   signature?: string | null
   status?: 'pending' | 'in_transit' | 'delivered' | 'cancelled'
+  nature_of_processing?: string
 }
 
 export interface PaginatedDeliveryChallansResponse {

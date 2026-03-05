@@ -113,21 +113,21 @@ export interface CreatePartRequest {
   customer_id: number
   part_description: string
   drawing_no: string
-  rev_no?: string
-  net_wt?: number
-  thickness?: number
-  tool_information?: string
-  raw_material?: string
-  drawing_location?: string
-  operation_sequence?: string
-  lead_time?: number
-  po_no?: string
-  po_date?: string
-  po_received?: boolean
-  po_qty?: number
-  po_drg_rev?: string
-  acknowledgement_remarks?: string
-  reqd_date_as_per_po?: string
+  rev_no: string
+  net_wt: number
+  thickness: number
+  tool_information: string
+  raw_material: string
+  drawing_location: string
+  operation_sequence: string
+  lead_time: number
+  po_no: string
+  po_date: string
+  po_received: boolean
+  po_qty: number
+  po_drg_rev: string
+  acknowledgement_remarks: string
+  reqd_date_as_per_po: string
   comp_name: string
 }
 
@@ -235,4 +235,59 @@ export interface OrderDisplay {
   dispatchDate: string
   invNo: string
   originalOrder: Order
+}
+
+export interface DashboardStats {
+  totalCompanies: number
+  totalCompanyUsers: number
+  totalCustomers: number
+  totalParts: number
+  totalOrders: number
+  totalDeliveryChallans: number
+  systemHealth?: number
+  activeUsers?: number
+  roleSummary?: RoleSummary
+}
+
+export interface RoleSummary {
+  superadmin: number
+  admin: number
+  supervisor: number
+  operator: number
+}
+
+export interface DashboardData {
+  companies: any[]
+  company_users: any[]
+  customers: any[]
+  parts: any[]
+  orders: any[]
+  delivery_challans: any[]
+  summary: {
+    total_companies: number
+    total_company_users: number
+    total_customers: number
+    total_parts: number
+    total_orders: number
+    total_delivery_challans: number
+  }
+  role_summary: RoleSummary
+}
+
+export interface DashboardResponse {
+  success: boolean
+  message: string
+  data: DashboardData
+}
+
+export interface RecentActivity {
+  id: string
+  type: 'company' | 'order' | 'customer' | 'part' | 'admin'
+  title: string
+  description: string
+  time: string
+  status: string
+  icon: string
+  color: string
+  amount?: string
 }

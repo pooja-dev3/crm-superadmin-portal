@@ -109,6 +109,13 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({ isOpen, onClose, 
     }
     if (!formData.gst_no?.trim()) {
       newErrors.gst_no = 'GST number is required'
+    } else {
+      const gstClean = formData.gst_no.trim().replace(/\s/g, '').toUpperCase()
+      if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}[Z]{1}[A-Z0-9]{1}$/.test(gstClean)) {
+        newErrors.gst_no = 'Invalid GST number format (e.g. 27ABCDE1234F1Z5)'
+      } else if (gstClean.length !== 15) {
+        newErrors.gst_no = 'GST number must be exactly 15 characters'
+      }
     }
     if (!formData.comp_name?.trim()) {
       newErrors.comp_name = 'Company selection is required'

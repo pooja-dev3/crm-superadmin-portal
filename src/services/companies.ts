@@ -21,15 +21,18 @@ export interface CreateCompanyRequest {
   phno: string
   gst: string
   status: 'active' | 'inactive'
+  code?: string
+  gst_no?: string
 }
 
 export interface UpdateCompanyRequest {
-  comp_name: string
-  email: string
-  address: string
-  phno: string
-  gst: string
-  status: 'active' | 'inactive'
+  comp_name?: string
+  email?: string
+  address?: string
+  phno?: string
+  gst?: string
+  status?: 'active' | 'inactive'
+  is_active?: boolean
 }
 
 export interface PaginatedCompaniesResponse {

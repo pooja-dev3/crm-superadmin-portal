@@ -17,50 +17,9 @@ import {
   Zap
 } from 'lucide-react'
 import { superadminApi } from '../services/superadminApi'
+import LoadingSpinner from '../components/common/LoadingSpinner'
+import type { DashboardResponse, DashboardStats } from '../types/api'
 
-interface DashboardResponse {
-  success: boolean
-  message: string
-  data: {
-    companies: any[]
-    company_users: any[]
-    customers: any[]
-    parts: any[]
-    orders: any[]
-    delivery_challans: any[]
-    summary: {
-      total_companies: number
-      total_company_users: number
-      total_customers: number
-      total_parts: number
-      total_orders: number
-      total_delivery_challans: number
-    }
-    role_summary: {
-      superadmin: number
-      admin: number
-      supervisor: number
-      operator: number
-    }
-  }
-}
-
-interface DashboardStats {
-  totalCompanies: number
-  totalCompanyUsers: number
-  totalCustomers: number
-  totalParts: number
-  totalOrders: number
-  totalDeliveryChallans: number
-  systemHealth: number
-  activeUsers: number
-  roleSummary: {
-    superadmin: number
-    admin: number
-    supervisor: number
-    operator: number
-  }
-}
 
 interface ChartData {
   labels: string[]
@@ -111,7 +70,7 @@ const Dashboard: React.FC = () => {
   const fetchRecentActivities = async () => {
     try {
       const activities = []
-      
+
       // Since real API server is not running, show mock activities
       activities.push(
         {
@@ -146,7 +105,7 @@ const Dashboard: React.FC = () => {
           color: 'text-purple-600'
         }
       )
-      
+
       setRecentActivities(activities)
     } catch (error) {
       console.error('Error fetching recent activities:', error)
@@ -167,10 +126,10 @@ const Dashboard: React.FC = () => {
     const fetchStats = async () => {
       try {
         const dashboardResponse = await superadminApi.getDashboard() as DashboardResponse
-        
+
         if (dashboardResponse.success && dashboardResponse.data) {
           const { summary, role_summary } = dashboardResponse.data
-          
+
           const realStats: DashboardStats = {
             totalCompanies: summary.total_companies || 0,
             totalCompanyUsers: summary.total_company_users || 0,
@@ -187,7 +146,7 @@ const Dashboard: React.FC = () => {
               operator: role_summary?.operator || 0
             }
           }
-          
+
           setStats(realStats)
         } else {
           // Fallback to mock data if API fails
@@ -207,7 +166,7 @@ const Dashboard: React.FC = () => {
               operator: 13
             }
           }
-        setStats(fallbackStats)
+          setStats(fallbackStats)
         }
 
         const mockRevenueData: RevenueData[] = [
@@ -301,8 +260,8 @@ const Dashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+      <div className="flex items-center justify-center h-screen -mt-20">
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
@@ -381,7 +340,7 @@ const Dashboard: React.FC = () => {
               <BarChart3 className="h-6 w-6 text-blue-600" />
             </div>
           </div>
-          
+
           {/* Metrics Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-4 bg-gray-50 rounded-lg">
@@ -476,15 +435,15 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="space-y-4">
             {recentActivities.map((activity: any, index: number) => {
-              const Icon = activity.icon === 'Building2' ? Building2 : 
-                           activity.icon === 'ShoppingCart' ? ShoppingCart :
-                           activity.icon === 'Users' ? Users :
-                           activity.icon === 'FileText' ? FileText : Activity
-              
-              const StatusIcon = activity.status === 'success' ? CheckCircle : 
-                                 activity.status === 'completed' ? CheckCircle : 
-                                 activity.status === 'in_transit' ? FileText : XCircle
-              
+              const Icon = activity.icon === 'Building2' ? Building2 :
+                activity.icon === 'ShoppingCart' ? ShoppingCart :
+                  activity.icon === 'Users' ? Users :
+                    activity.icon === 'FileText' ? FileText : Activity
+
+              const StatusIcon = activity.status === 'success' ? CheckCircle :
+                activity.status === 'completed' ? CheckCircle :
+                  activity.status === 'in_transit' ? FileText : XCircle
+
               return (
                 <div key={activity.id} className="flex items-start space-x-4 p-4 rounded-lg bg-gray-50 border border-gray-100 hover:bg-gray-100 transition-colors duration-200">
                   <div className="flex-shrink-0">
@@ -503,9 +462,9 @@ const Dashboard: React.FC = () => {
                       <span>{activity.time}</span>
                       <span className="mx-2">•</span>
                       <span className={`${activity.color} font-medium`}>
-                        {activity.status === 'success' ? 'Success' : 
-                         activity.status === 'completed' ? 'Completed' :
-                         activity.status === 'in_transit' ? 'In Transit' : activity.status}
+                        {activity.status === 'success' ? 'Success' :
+                          activity.status === 'completed' ? 'Completed' :
+                            activity.status === 'in_transit' ? 'In Transit' : activity.status}
                       </span>
                       {activity.amount && (
                         <span className="ml-2">•{activity.amount}</span>

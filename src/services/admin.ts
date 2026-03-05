@@ -22,6 +22,8 @@ export interface CreateAdminRequest {
   role: string
   company: string
   company_code: string
+  comp_name?: string
+  comp_code?: string
   password: string
   password_confirmation: string
   is_active?: boolean

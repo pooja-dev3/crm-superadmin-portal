@@ -46,16 +46,16 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
     try {
       // First fetch all companies
       const companiesResponse = await companyApi.getAllCompanies()
-      
+
       if (companiesResponse.success) {
         let companiesData: Company[] = []
-        
+
         if (Array.isArray(companiesResponse.data)) {
           companiesData = companiesResponse.data
         } else if (companiesResponse.data && Array.isArray(companiesResponse.data.data)) {
           companiesData = companiesResponse.data.data
         }
-        
+
         setCompanies(companiesData)
         console.log('Companies loaded:', companiesData)
       }
@@ -68,45 +68,45 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
     try {
       // Fetch customers (this should ideally be filtered by company, but using all customers for now)
       const customersResponse = await customerApi.getAllCustomers()
-      
+
       if (customersResponse.success) {
         let customersData: Customer[] = []
-        
+
         if (Array.isArray(customersResponse.data)) {
           customersData = customersResponse.data
         } else if (customersResponse.data && Array.isArray(customersResponse.data.data)) {
           customersData = customersResponse.data.data
         }
-        
+
         // Debug: Log the raw customer response to understand the data structure
         console.log('Raw customers API response:', customersResponse)
         console.log('Customer response data structure:', customersResponse.data)
-        
+
         // Try multiple possible company field names to filter customers
         const companyCustomers = customersData.filter(customer => {
           // Try multiple possible company field names due to inconsistent API
-          const customerCompany = 
-            (customer as any).company_name || 
-            (customer as any).company || 
-            (customer as any).comp_name || 
+          const customerCompany =
+            (customer as any).company_name ||
+            (customer as any).company ||
+            (customer as any).comp_name ||
             (customer as any).companyId ||
             (customer as any).company_id ||
             customer.name === companyName // Fallback: check if customer name matches company name
-          
+
           console.log(`Customer ${customer.id}: name=${customer.name}, company_field=${customerCompany}, selected_company=${companyName}`)
-          
+
           return customerCompany === companyName || !customerCompany // Show if matches or no company field
         })
-        
+
         console.log('All customers data:', customersData)
         console.log('Selected company:', companyName)
         console.log('Sample customer structure:', customersData[0])
         console.log('Customers to show:', companyCustomers)
         console.log('Filtered customers count:', companyCustomers.length, 'of', customersData.length)
-        
+
         setCustomers(companyCustomers)
         console.log('Customers loaded for company:', companyName, companyCustomers)
-        
+
         // Reset customer and part selections when company changes
         setFormData(prev => ({ ...prev, customer_id: 0, part_id: 0 }))
         setParts([])
@@ -122,21 +122,21 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
     try {
       console.log('=== DEBUG: fetchPartsForCustomer called ===')
       console.log('Customer ID:', customerId)
-      
+
       // Fetch parts (this should ideally be filtered by customer, but using all parts for now)
       const partsResponse = await partApi.getAllParts()
-      
+
       console.log('Parts API response:', partsResponse)
       console.log('Parts response success:', partsResponse.success)
-      
+
       if (partsResponse.success) {
         let partsData: PartWithCustomer[] = []
-        
+
         console.log('Raw parts response data:', partsResponse.data)
         console.log('Is partsResponse.data an array?', Array.isArray(partsResponse.data))
         console.log('Does partsResponse.data.data exist?', (partsResponse.data as any)?.data)
         console.log('Is partsResponse.data.data an array?', Array.isArray((partsResponse.data as any)?.data))
-        
+
         if (Array.isArray(partsResponse.data)) {
           partsData = partsResponse.data
           console.log('Using partsResponse.data directly')
@@ -146,30 +146,30 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
         } else {
           console.log('No valid parts array found in response')
         }
-        
+
         console.log('Final partsData:', partsData)
         console.log('PartsData length:', partsData.length)
-        
+
         if (partsData.length > 0) {
           console.log('Sample part structure:', partsData[0])
           console.log('All part customer_ids:', partsData.map(p => ({ id: p.id, customer_id: p.customer_id })))
         }
-        
+
         // Filter parts by selected customer - only show parts that belong to this customer
-        const customerParts = partsData.filter(part => 
+        const customerParts = partsData.filter(part =>
           part.customer_id === customerId
         )
-        
+
         console.log('All parts data:', partsData)
         console.log('Selected customer ID:', customerId)
         console.log('Parts to show:', customerParts)
         console.log('Parts with customer_id:', partsData.filter(p => p.customer_id))
         console.log('Parts matching customer ID:', customerParts.length, 'of', partsData.length)
-        
+
         setParts(customerParts)
         console.log('Parts state set to:', customerParts)
         console.log('Parts loaded for customer:', customerId, customerParts)
-        
+
         // Reset part selection when customer changes
         setFormData(prev => ({ ...prev, part_id: 0 }))
       } else {
@@ -184,16 +184,16 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
-    
+
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked
       setFormData(prev => ({ ...prev, [name]: checked }))
     } else if (type === 'number') {
-      const numValue = value === '' ? undefined : Number(value)
+      const numValue = value === '' ? 0 : Number(value)
       setFormData(prev => ({ ...prev, [name]: numValue }))
     } else {
       setFormData(prev => ({ ...prev, [name]: value }))
-      
+
       // Auto-fill PO Number when a part is selected
       if (name === 'part_id' && value) {
         const selectedPart = parts.find(part => part.id === Number(value))
@@ -203,9 +203,9 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
           const today = new Date()
           const dateStr = today.getFullYear().toString().slice(-2) + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0')
           const poNumber = `PO-${dateStr}-${partNo}`
-          
-          setFormData(prev => ({ 
-            ...prev, 
+
+          setFormData(prev => ({
+            ...prev,
             part_id: Number(value),
             po_no: poNumber,
             // Also auto-fill other fields from part data if available
@@ -218,7 +218,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
-    
+
     if (!formData.customer_id) {
       newErrors.customer_id = 'Customer is required'
     }
@@ -247,7 +247,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
@@ -296,7 +296,7 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div 
+        <div
           className="fixed inset-0 transition-opacity"
           aria-hidden="true"
           onClick={onClose}
@@ -335,7 +335,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                       setFormData(prev => ({ ...prev, comp_name: companyName, customer_id: 0, part_id: 0 }))
                       fetchCustomersForCompany(companyName)
                     }}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.comp_name ? 'border-red-300' : 'border-gray-300'
+                      }`}
                   >
                     <option value="">Select a company</option>
                     {companies.map(company => (
@@ -369,7 +370,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                       setFormData(prev => ({ ...prev, customer_id: customerId, part_id: 0 }))
                       fetchPartsForCustomer(customerId)
                     }}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.customer_id ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     disabled={!formData.comp_name}
                   >
                     <option value="">{!formData.comp_name ? 'Select company first' : 'Select a customer'}</option>
@@ -400,7 +402,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                     name="part_id"
                     value={formData.part_id || ''}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.part_id ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     disabled={!formData.customer_id}
                   >
                     <option value="">{!formData.customer_id ? 'Select customer first' : 'Select a part'}</option>
@@ -431,7 +434,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                     name="po_no"
                     value={formData.po_no}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.po_no ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="Enter PO number"
                   />
                   {errors.po_no && (
@@ -449,9 +453,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                     name="po_date"
                     value={formData.po_date || ''}
                     onChange={handleInputChange}
-                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.po_date ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.po_date ? 'border-red-300' : 'border-gray-300'
+                      }`}
                   />
                   {errors.po_date && (
                     <p className="mt-1 text-sm text-red-600">{errors.po_date}</p>
@@ -468,7 +471,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                     name="po_qty"
                     value={formData.po_qty || ''}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.po_qty ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="Enter PO quantity"
                     min="1"
                   />
@@ -487,7 +491,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                     name="price"
                     value={formData.price}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.price ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="Enter unit price"
                     step="0.01"
                     min="0"
@@ -507,7 +512,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                     name="balance_qty"
                     value={formData.balance_qty || ''}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.balance_qty ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="Enter balance quantity"
                     min="0"
                   />
@@ -525,7 +531,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                     name="po_drg_rev"
                     value={formData.po_drg_rev}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.po_drg_rev ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="Enter PO drawing revision"
                   />
                 </div>
@@ -540,14 +547,15 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                     name="reqd_date_as_per_po"
                     value={formData.reqd_date_as_per_po}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.reqd_date_as_per_po ? 'border-red-300' : 'border-gray-300'
+                      }`}
                   />
                 </div>
               </div>
 
               <div>
                 <label htmlFor="acknowledgement_remarks" className="block text-sm font-medium text-gray-700">
-                  Acknowledgement Remarks 
+                  Acknowledgement Remarks <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   id="acknowledgement_remarks"
@@ -555,7 +563,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, onClose, onSucces
                   value={formData.acknowledgement_remarks}
                   onChange={handleInputChange}
                   rows={3}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.acknowledgement_remarks ? 'border-red-300' : 'border-gray-300'
+                    }`}
                   placeholder="Enter acknowledgement remarks"
                 />
               </div>

@@ -72,11 +72,16 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
     setIsLoadingCompanies(true)
     try {
       console.log('Fetching companies from API...')
-      const response = await superadminApi.getCompanies() as ApiResponse<any[]>
+      const response = await superadminApi.getCompanies()
       console.log('Companies API response:', response)
 
-      if (response.success && Array.isArray(response.data)) {
-        const companiesData = response.data
+      if (response.success) {
+        let companiesData: any[] = []
+        if (Array.isArray(response.data)) {
+          companiesData = response.data
+        } else if (response.data && 'data' in response.data && Array.isArray(response.data.data)) {
+          companiesData = response.data.data
+        }
         console.log('Companies data extracted:', companiesData)
         setCompanies(companiesData)
       } else {
@@ -176,14 +181,16 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
         email: formData.email,
         phone: formData.phone,
         role: formData.role,
-        comp_name: selectedCompany?.comp_name || '', // Send company name instead of code
+        company: selectedCompany?.comp_name || '',
+        company_code: formData.comp_code,
+        comp_name: selectedCompany?.comp_name || '',
         comp_code: formData.comp_code,
         password: formData.password,
         password_confirmation: formData.password_confirmation,
         is_active: formData.is_active
       }
 
-      const response = await superadminApi.createCompanyUser(createData) as ApiResponse<any>
+      const response = await superadminApi.createCompanyUser(createData)
       if (response.success) {
         addToast('Admin created successfully', 'success')
         onSuccess()
@@ -224,16 +231,17 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={handleClose} />
 
-        <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto scrollbar-hide">
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+        <div className="relative bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+          {/* Header - Sticky */}
+          <div className="flex-shrink-0 bg-white border-b border-gray-100 px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-semibold text-gray-900">Add New Admin</h3>
-                <p className="mt-1 text-sm text-gray-600">Create a new administrator account</p>
+                <h3 className="text-xl font-bold text-gray-900">Add New Admin</h3>
+                <p className="mt-1 text-sm text-gray-500">Create a new administrator account</p>
               </div>
               <button
                 onClick={handleClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
                 disabled={isLoading}
               >
                 <X className="h-6 w-6" />
@@ -241,236 +249,240 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                    }`}
-                  disabled={isLoading}
-                  placeholder="Enter full name"
-                />
-                {errors.name && (
-                  <p className="mt-1 text-sm text-red-600 flex items-center">
-                    <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                    {errors.name}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${errors.email ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                    }`}
-                  disabled={isLoading}
-                  placeholder="admin@example.com"
-                />
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-600 flex items-center">
-                    <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                    {errors.email}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${errors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                    }`}
-                  disabled={isLoading}
-                  placeholder="+91 98765 43210"
-                />
-                {errors.phone && (
-                  <p className="mt-1 text-sm text-red-600 flex items-center">
-                    <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                    {errors.phone}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Company <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedCompany?.id || ''}
-                  onChange={handleCompanyChange}
-                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${errors.comp_code ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                    }`}
-                  disabled={isLoading || isLoadingCompanies}
-                >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.comp_name}
-                    </option>
-                  ))}
-                </select>
-                {selectedCompany && (
-                  <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
-                    <p className="text-sm text-blue-700">
-                      <span className="font-medium">Company Code:</span> {selectedCompany.code}
+          {/* Body - Scrollable */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-gray-200">
+            <form id="add-admin-form" onSubmit={handleSubmit}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    className={`block w-full border rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-all ${errors.name ? 'border-red-500 bg-red-50 ring-1 ring-red-500' : 'border-gray-300 hover:border-blue-300'
+                      }`}
+                    disabled={isLoading}
+                    placeholder="Enter full name"
+                  />
+                  {errors.name && (
+                    <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center">
+                      <X className="h-3 w-3 mr-1" />
+                      {errors.name}
                     </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className={`block w-full border rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-all ${errors.email ? 'border-red-500 bg-red-50 ring-1 ring-red-500' : 'border-gray-300 hover:border-blue-300'
+                      }`}
+                    disabled={isLoading}
+                    placeholder="admin@example.com"
+                  />
+                  {errors.email && (
+                    <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center">
+                      <X className="h-3 w-3 mr-1" />
+                      {errors.email}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Phone <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className={`block w-full border rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-all ${errors.phone ? 'border-red-500 bg-red-50 ring-1 ring-red-500' : 'border-gray-300 hover:border-blue-300'
+                      }`}
+                    disabled={isLoading}
+                    placeholder="+91 98765 43210"
+                  />
+                  {errors.phone && (
+                    <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center">
+                      <X className="h-3 w-3 mr-1" />
+                      {errors.phone}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Company <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={selectedCompany?.id || ''}
+                    onChange={handleCompanyChange}
+                    className={`block w-full border rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-all ${errors.comp_code ? 'border-red-500 bg-red-50 ring-1 ring-red-500' : 'border-gray-300 hover:border-blue-300'
+                      }`}
+                    disabled={isLoading || isLoadingCompanies}
+                  >
+                    <option value="">Select Company</option>
+                    {companies.map((company) => (
+                      <option key={company.id} value={company.id}>
+                        {company.comp_name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedCompany && (
+                    <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded-md">
+                      <p className="text-xs text-blue-700">
+                        <span className="font-semibold">Code:</span> {selectedCompany.code}
+                      </p>
+                    </div>
+                  )}
+                  {errors.comp_code && (
+                    <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center">
+                      <X className="h-3 w-3 mr-1" />
+                      {errors.comp_code}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Role <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    className={`block w-full border rounded-lg shadow-sm py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-all ${errors.role ? 'border-red-500 bg-red-50 ring-1 ring-red-500' : 'border-gray-300 hover:border-blue-300'
+                      }`}
+                    disabled={isLoading}
+                  >
+                    <option value="">Select Role</option>
+                    <option value="admin">Admin</option>
+                    <option value="supervisor">Supervisor</option>
+                    <option value="operator">Operator</option>
+                  </select>
+                  {errors.role && (
+                    <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center">
+                      <X className="h-3 w-3 mr-1" />
+                      {errors.role}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Password <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      className={`block w-full border rounded-lg shadow-sm py-2.5 px-4 pr-11 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-all ${errors.password ? 'border-red-500 bg-red-50 ring-1 ring-red-500' : 'border-gray-300 hover:border-blue-300'
+                        }`}
+                      disabled={isLoading}
+                      placeholder="Min. 6 characters"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 px-3.5 flex items-center text-gray-400 hover:text-blue-600 focus:outline-none transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
-                )}
-                {errors.comp_code && (
-                  <p className="mt-1 text-sm text-red-600 flex items-center">
-                    <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                    {errors.comp_code}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Role <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${errors.role ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                    }`}
-                  disabled={isLoading}
-                >
-                  <option value="">Select Role</option>
-                  <option value="admin">Admin</option>
-                  <option value="supervisor">Supervisor</option>
-                  <option value="operator">Operator</option>
-                </select>
-                {errors.role && (
-                  <p className="mt-1 text-sm text-red-600 flex items-center">
-                    <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                    {errors.role}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${errors.password ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                      }`}
-                    disabled={isLoading}
-                    placeholder="Min. 6 characters"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
+                  {errors.password && (
+                    <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center">
+                      <X className="h-3 w-3 mr-1" />
+                      {errors.password}
+                    </p>
+                  )}
                 </div>
-                {errors.password && (
-                  <p className="mt-1 text-sm text-red-600 flex items-center">
-                    <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                    {errors.password}
-                  </p>
-                )}
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirm Password <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    name="password_confirmation"
-                    value={formData.password_confirmation}
-                    onChange={handleChange}
-                    className={`block w-full border rounded-lg shadow-sm py-2.5 px-3 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-colors ${errors.password_confirmation ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                      }`}
-                    disabled={isLoading}
-                    placeholder="Re-enter password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Confirm Password <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      name="password_confirmation"
+                      value={formData.password_confirmation}
+                      onChange={handleChange}
+                      className={`block w-full border rounded-lg shadow-sm py-2.5 px-4 pr-11 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm transition-all ${errors.password_confirmation ? 'border-red-500 bg-red-50 ring-1 ring-red-500' : 'border-gray-300 hover:border-blue-300'
+                        }`}
+                      disabled={isLoading}
+                      placeholder="Re-enter password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute inset-y-0 right-0 px-3.5 flex items-center text-gray-400 hover:text-blue-600 focus:outline-none transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.password_confirmation && (
+                    <p className="mt-1.5 text-xs font-medium text-red-600 flex items-center">
+                      <X className="h-3 w-3 mr-1" />
+                      {errors.password_confirmation}
+                    </p>
+                  )}
                 </div>
-                {errors.password_confirmation && (
-                  <p className="mt-1 text-sm text-red-600 flex items-center">
-                    <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                    {errors.password_confirmation}
-                  </p>
-                )}
               </div>
-            </div>
 
-            <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="is_active"
-                  checked={formData.is_active}
-                  onChange={handleChange}
-                  className="h-4 w-4 text-blue-900 focus:ring-blue-900 border-gray-300 rounded"
-                  disabled={isLoading}
-                />
-                <label className="ml-3 block text-sm text-gray-700">
-                  <span className="font-medium">Active Account</span>
-                  <span className="text-gray-500 ml-1">- User can login immediately</span>
-                </label>
+              <div className="mt-8 p-5 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="flex items-center">
+                  <div className="relative flex items-center h-5">
+                    <input
+                      type="checkbox"
+                      name="is_active"
+                      id="is_active"
+                      checked={formData.is_active}
+                      onChange={handleChange}
+                      className="h-5 w-5 text-blue-900 focus:ring-blue-900 border-gray-300 rounded-md transition-all cursor-pointer"
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="ml-3">
+                    <label htmlFor="is_active" className="text-sm font-semibold text-gray-900 cursor-pointer">
+                      Active Account
+                    </label>
+                    <p className="text-xs text-gray-500 mt-0.5">User will be able to log in immediately</p>
+                  </div>
+                </div>
               </div>
-            </div>
+            </form>
+          </div>
 
-            <div className="flex justify-between items-center pt-6 border-t border-gray-200 mt-6">
-              <div className="text-sm text-gray-500">
-                * Required fields
-              </div>
+          {/* Footer - Sticky */}
+          <div className="flex-shrink-0 bg-gray-50 border-t border-gray-100 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-500 italic">
+                * Fields marked with asterisk are mandatory
+              </span>
               <div className="flex space-x-3">
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="px-5 py-2.5 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 disabled:opacity-50 transition-colors"
+                  className="px-6 py-2.5 border border-gray-300 rounded-lg shadow-sm text-sm font-bold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 disabled:opacity-50 transition-all"
                   disabled={isLoading}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-900 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 disabled:opacity-50 transition-colors flex items-center"
+                  form="add-admin-form"
+                  className="px-8 py-2.5 border border-transparent rounded-lg shadow-lg text-sm font-bold text-white bg-blue-900 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 disabled:opacity-50 transition-all flex items-center"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -479,7 +491,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Creating...
+                      Creating Account...
                     </>
                   ) : (
                     'Create Admin'
@@ -487,7 +499,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSucces
                 </button>
               </div>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>

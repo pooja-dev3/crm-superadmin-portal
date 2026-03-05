@@ -89,9 +89,9 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     console.log('=== INPUT CHANGE DETECTED ===') // Debug log
     const { name, value, type } = e.target
-    
+
     console.log('Input changed:', { name, value, type }) // Debug log
-    
+
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked
       console.log('Checkbox changed:', { name, checked }) // Debug log
@@ -102,7 +102,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
         return newData
       })
     } else if (type === 'number') {
-      const numValue = value === '' ? undefined : Number(value)
+      const numValue = value === '' ? 0 : Number(value)
       console.log('Number changed:', { name, numValue }) // Debug log
       setFormData(prev => {
         console.log('Previous form data:', prev) // Debug log
@@ -123,7 +123,10 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
-    
+
+    if (!formData.comp_name?.trim()) {
+      newErrors.comp_name = 'Company name is required'
+    }
     if (!formData.customer_id) {
       newErrors.customer_id = 'Customer is required'
     }
@@ -133,14 +136,26 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
     if (!formData.po_no?.trim()) {
       newErrors.po_no = 'PO number is required'
     }
+    if (!formData.po_date) {
+      newErrors.po_date = 'PO date is required'
+    }
     if (!formData.po_qty || formData.po_qty <= 0) {
       newErrors.po_qty = 'PO quantity must be greater than 0'
     }
-    if (!formData.price || parseFloat(formData.price) <= 0) {
+    if (!formData.price || parseFloat(formData.price.toString()) <= 0) {
       newErrors.price = 'Price must be greater than 0'
     }
-    if (!formData.comp_name?.trim()) {
-      newErrors.comp_name = 'Company name is required'
+    if (!formData.balance_qty || formData.balance_qty <= 0) {
+      newErrors.balance_qty = 'Balance quantity is required'
+    }
+    if (!formData.po_drg_rev?.trim()) {
+      newErrors.po_drg_rev = 'PO drawing revision is required'
+    }
+    if (!formData.reqd_date_as_per_po) {
+      newErrors.reqd_date_as_per_po = 'Required date is required'
+    }
+    if (!formData.acknowledgement_remarks?.trim()) {
+      newErrors.acknowledgement_remarks = 'Acknowledgement remarks are required'
     }
 
     setErrors(newErrors as Partial<Order>)
@@ -149,14 +164,14 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
 
     // Force a small delay to ensure state is updated
     await new Promise(resolve => setTimeout(resolve, 0))
-    
+
     setIsSubmitting(true)
     try {
       // Get the current form data to ensure we have the latest state
@@ -185,7 +200,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div 
+        <div
           className="fixed inset-0 transition-opacity"
           aria-hidden="true"
           onClick={onClose}
@@ -219,7 +234,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
                     name="customer_id"
                     value={formData.customer_id || ''}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.customer_id ? 'border-red-300' : 'border-gray-300'}`}
                   >
                     <option value="">Select a customer</option>
                     {customers.map(customer => (
@@ -242,7 +257,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
                     name="part_id"
                     value={formData.part_id || ''}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.part_id ? 'border-red-300' : 'border-gray-300'}`}
                   >
                     <option value="">Select a part</option>
                     {parts.map(part => (
@@ -268,7 +283,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
                     name="po_no"
                     value={formData.po_no}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.po_no ? 'border-red-300' : 'border-gray-300'}`}
                     placeholder="Enter PO number"
                   />
                   {errors.po_no && (
@@ -286,7 +301,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
                     name="po_date"
                     value={formData.po_date}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.po_date ? 'border-red-300' : 'border-gray-300'}`}
                   />
                 </div>
               </div>
@@ -302,7 +317,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
                     name="po_qty"
                     value={formData.po_qty || ''}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.po_qty ? 'border-red-300' : 'border-gray-300'}`}
                     placeholder="Enter PO quantity"
                     min="1"
                   />
@@ -321,7 +336,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
                     name="price"
                     value={formData.price}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.price ? 'border-red-300' : 'border-gray-300'}`}
                     placeholder="Enter unit price"
                     step="0.01"
                     min="0"
@@ -340,7 +355,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
                     name="comp_name"
                     value={formData.comp_name || ''}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.comp_name ? 'border-red-300' : 'border-gray-300'}`}
                   >
                     <option value="">Select a company</option>
                     {companies.map(company => (
@@ -364,7 +379,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
                     name="balance_qty"
                     value={formData.balance_qty || ''}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.balance_qty ? 'border-red-300' : 'border-gray-300'}`}
                     placeholder="Enter balance quantity"
                     min="0"
                   />
@@ -382,7 +397,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
                     name="po_drg_rev"
                     value={formData.po_drg_rev}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.po_drg_rev ? 'border-red-300' : 'border-gray-300'}`}
                     placeholder="Enter PO drawing revision"
                   />
                 </div>
@@ -397,7 +412,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
                     name="reqd_date_as_per_po"
                     value={formData.reqd_date_as_per_po}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.reqd_date_as_per_po ? 'border-red-300' : 'border-gray-300'}`}
                   />
                 </div>
               </div>
@@ -412,7 +427,7 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ isOpen, onClose, onSucc
                   value={formData.acknowledgement_remarks}
                   onChange={handleInputChange}
                   rows={3}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.acknowledgement_remarks ? 'border-red-300' : 'border-gray-300'}`}
                   placeholder="Enter acknowledgement remarks"
                 />
               </div>

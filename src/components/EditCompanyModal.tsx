@@ -215,9 +215,13 @@ const EditCompanyModal: React.FC<EditCompanyModalProps> = ({
                     name="address"
                     value={formData.address}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.address ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="Enter company address"
                   />
+                  {errors.address && (
+                    <p className="mt-1 text-sm text-red-600">{errors.address}</p>
+                  )}
                 </div>
 
                 <div>

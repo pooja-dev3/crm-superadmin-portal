@@ -15,7 +15,7 @@ interface EditDeliveryChallanModalProps {
 
 const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isOpen, onClose, onSuccess, challan }) => {
   const { addToast } = useToast()
-  
+
   // Helper function to format date for input field
   const formatDateForInput = (dateString: string | null | undefined): string => {
     if (!dateString) return ''
@@ -41,7 +41,8 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
     total: '0.00',
     notes: null,
     signature: null,
-    status: 'pending'
+    status: 'pending',
+    nature_of_processing: ''
   })
   const [companies, setCompanies] = useState<any[]>([])
   const [parts, setParts] = useState<any[]>([])
@@ -52,7 +53,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
   useEffect(() => {
     if (challan && isOpen) {
       console.log('Prefilling form with challan data:', challan)
-      
+
       setFormData({
         challan_no: challan.challan_no || challan.challanNumber || '',
         comp_name: (challan.comp_name || challan.company) || (challan.company || ''),
@@ -69,7 +70,8 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
         total: challan.total || '0.00',
         notes: challan.notes || null,
         signature: challan.signature || null,
-        status: challan.status || 'pending'
+        status: challan.status || 'pending',
+        nature_of_processing: challan.nature_of_processing || ''
       })
       setErrors({})
       fetchCompanies()
@@ -83,13 +85,13 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
       const response = await companyApi.getAllCompanies()
       if (response.success) {
         let companiesData: any[] = []
-        
+
         if (Array.isArray(response.data)) {
           companiesData = response.data
         } else if (response.data.data && Array.isArray(response.data.data)) {
           companiesData = response.data.data
         }
-        
+
         setCompanies(companiesData)
         console.log('Companies loaded for dropdown:', companiesData.length, companiesData)
       }
@@ -116,13 +118,13 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
       const response = await customerApi.getAllCustomers()
       if (response.success) {
         let customersData: any[] = []
-        
+
         if (Array.isArray(response.data)) {
           customersData = response.data
         } else if (response.data.data && Array.isArray(response.data.data)) {
           customersData = response.data.data
         }
-        
+
         setCustomers(customersData)
         console.log('Customers loaded for dropdown:', customersData.length, customersData)
         console.log('Sample customer structure:', customersData[0]) // Debug first customer structure
@@ -135,18 +137,19 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
 
   const handleCompanyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { value } = e.target
-    
+
     // When company changes, clear customer and part selections
     setFormData(prev => ({
       ...prev,
       to: value,
+      comp_name: value, // Sync comp_name with selected company
       customer_id: null,
       part_id: null,
       part_no: '',
       part_description: '',
       hsn_code: ''
     }))
-    
+
     // Clear error for this field when user starts typing
     if (errors.to) {
       setErrors(prev => ({ ...prev, to: '' }))
@@ -155,7 +158,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    
+
     if (name === 'customer_id') {
       const processedValue = value === '' ? null : Number(value)
       // When customer changes, clear part selection and reset part fields
@@ -170,7 +173,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
     } else {
       setFormData(prev => ({ ...prev, [name]: value }))
     }
-    
+
     // Clear error when user starts typing
     if (errors[name as keyof UpdateDeliveryChallanRequest]) {
       setErrors(prev => ({ ...prev, [name]: undefined }))
@@ -180,24 +183,23 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
 
-    // All fields are mandatory
     if (!formData.challan_no?.trim()) {
       newErrors.challan_no = 'Challan number is required'
     }
     if (!formData.comp_name?.trim()) {
-      newErrors.comp_name = 'Company is required'
+      newErrors.comp_name = 'Company name is required'
     }
     if (!formData.customer_id) {
       newErrors.customer_id = 'Customer is required'
     }
     if (!formData.challan_date?.trim()) {
-      newErrors.challan_date = 'Delivery date is required'
+      newErrors.challan_date = 'Challan date is required'
     }
     if (!formData.to?.trim()) {
-      newErrors.to = 'To field is required'
+      newErrors.to = 'Company/Recipient is required'
     }
     if (!formData.from?.trim()) {
-      newErrors.from = 'From field is required'
+      newErrors.from = 'From location is required'
     }
     if (!formData.part_id) {
       newErrors.part_id = 'Part is required'
@@ -214,14 +216,14 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
     if (!formData.quantity || formData.quantity <= 0) {
       newErrors.quantity = 'Quantity must be greater than 0'
     }
-    if (!formData.unit_rate?.trim()) {
+    if (!formData.unit_rate || formData.unit_rate === '0.00' || formData.unit_rate.trim() === '') {
       newErrors.unit_rate = 'Unit rate is required'
     }
-    if (!formData.total?.trim()) {
+    if (!formData.total || formData.total === '0.00' || formData.total.trim() === '') {
       newErrors.total = 'Total is required'
     }
-    if (!formData.challan_date?.trim()) {
-      newErrors.challan_date = 'Challan date is required'
+    if (!formData.status) {
+      newErrors.status = 'Status is required'
     }
     if (!formData.signature?.trim()) {
       newErrors.signature = 'Signature is required'
@@ -229,8 +231,8 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
     if (!formData.notes?.trim()) {
       newErrors.notes = 'Notes are required'
     }
-    if (!formData.status) {
-      newErrors.status = 'Status is required'
+    if (!formData.nature_of_processing?.trim()) {
+      newErrors.nature_of_processing = 'Nature of processing is required'
     }
 
     setErrors(newErrors as Partial<UpdateDeliveryChallanRequest>)
@@ -239,40 +241,40 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     console.log('Form data being submitted:', formData)
     console.log('Challan ID:', challan?.id, 'Type:', typeof challan?.id)
-    
+
     if (!validateForm() || !challan) return
-    
+
     // Ensure part_id and customer_id are valid before sending (same as Add modal)
     const submitData = {
       ...formData,
       part_id: formData.part_id && formData.part_id > 0 ? formData.part_id : null,
       customer_id: formData.customer_id && formData.customer_id > 0 ? formData.customer_id : null
     }
-    
+
     console.log('Processed submit data:', submitData)
-    
+
     setIsSubmitting(true)
     try {
       const challanId = parseInt(challan?.id || '0')
       console.log('Parsed challan ID:', challanId)
-      
+
       const response = await superadminApi.updateDeliveryChallan(challanId, submitData) as ApiResponse<any>
       console.log('Raw API Response:', response)
       console.log('Response type:', typeof response)
       console.log('Response success:', response?.success)
       console.log('Response data:', response?.data)
       console.log('Response message:', response?.message)
-      
+
       // Handle different response formats safely
       const isSuccess = Boolean(response?.success)
       const message = response?.message || 'Update completed'
-      
+
       console.log('Is success:', isSuccess)
       console.log('Final message:', message)
-      
+
       if (isSuccess) {
         console.log('Update successful, calling onSuccess and closing modal')
         addToast('Delivery challan updated successfully', 'success')
@@ -306,7 +308,8 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
       unit_rate: '0.00',
       total: '0.00',
       notes: null,
-      signature: null
+      signature: null,
+      nature_of_processing: ''
     })
     setErrors({})
     onClose()
@@ -317,7 +320,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div 
+        <div
           className="fixed inset-0 transition-opacity"
           aria-hidden="true"
           onClick={handleClose}
@@ -341,7 +344,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                   <X className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -353,9 +356,8 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                       name="to"
                       value={formData.to}
                       onChange={handleCompanyChange}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.to ? 'border-red-300' : 'border-gray-300'
-                      }`}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.to ? 'border-red-300' : 'border-gray-300'
+                        }`}
                       disabled={isSubmitting}
                     >
                       <option value="">Select company first</option>
@@ -379,9 +381,8 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                       name="customer_id"
                       value={formData.customer_id?.toString() || ''}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.customer_id ? 'border-red-300' : 'border-gray-300'
-                      }`}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.customer_id ? 'border-red-300' : 'border-gray-300'
+                        }`}
                       disabled={isSubmitting || !formData.to}
                     >
                       <option value="">{!formData.to ? 'Select company first' : 'Select customer'}</option>
@@ -394,10 +395,10 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                           return matchesCompany
                         })
                         .map((customer) => (
-                        <option key={customer.id} value={customer.id}>
-                          {customer.name}
-                        </option>
-                      ))}
+                          <option key={customer.id} value={customer.id}>
+                            {customer.name}
+                          </option>
+                        ))}
                     </select>
                     {errors.customer_id && (
                       <p className="mt-1 text-sm text-red-600">{errors.customer_id}</p>
@@ -427,19 +428,18 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                         hsn_code: selectedPart?.hsn_code || ''
                       }))
                     }}
-                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.part_id ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.part_id ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     disabled={isSubmitting || !formData.customer_id}
                   >
                     <option value="">{!formData.customer_id ? 'Select customer first' : 'Select part'}</option>
                     {parts
                       .filter(part => formData.customer_id && part.customer_id === formData.customer_id)
                       .map((part) => (
-                      <option key={part.id} value={part.id}>
-                        {part.part_no} - {part.part_description}
-                      </option>
-                    ))}
+                        <option key={part.id} value={part.id}>
+                          {part.part_no} - {part.part_description}
+                        </option>
+                      ))}
                   </select>
                   {errors.part_id && (
                     <p className="mt-1 text-sm text-red-600">{errors.part_id}</p>
@@ -459,9 +459,8 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                     name="part_no"
                     value={formData.part_no}
                     onChange={handleInputChange}
-                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.part_no ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.part_no ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="Enter part number"
                     disabled={isSubmitting}
                   />
@@ -481,9 +480,8 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                       name="challan_no"
                       value={formData.challan_no}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.challan_no ? 'border-red-300' : 'border-gray-300'
-                      }`}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.challan_no ? 'border-red-300' : 'border-gray-300'
+                        }`}
                       placeholder="Enter challan number"
                       disabled={isSubmitting}
                     />
@@ -502,9 +500,8 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                       name="from"
                       value={formData.from}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.from ? 'border-red-300' : 'border-gray-300'
-                      }`}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.from ? 'border-red-300' : 'border-gray-300'
+                        }`}
                       placeholder="Enter from location"
                       disabled={isSubmitting}
                     />
@@ -514,28 +511,46 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="part_description" className="block text-sm font-medium text-gray-700">
-                      Part Description <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="part_description"
-                      name="part_description"
-                      value={formData.part_description}
-                      onChange={handleInputChange}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.part_description ? 'border-red-300' : 'border-gray-300'
+                <div>
+                  <label htmlFor="part_description" className="block text-sm font-medium text-gray-700">
+                    Part Description <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="part_description"
+                    name="part_description"
+                    value={formData.part_description}
+                    onChange={handleInputChange}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.part_description ? 'border-red-300' : 'border-gray-300'
                       }`}
-                      placeholder="Enter part description"
-                      disabled={isSubmitting}
-                    />
-                    {errors.part_description && (
-                      <p className="mt-1 text-sm text-red-600">{errors.part_description}</p>
-                    )}
-                  </div>
+                    placeholder="Enter part description"
+                    disabled={isSubmitting}
+                  />
+                  {errors.part_description && (
+                    <p className="mt-1 text-sm text-red-600">{errors.part_description}</p>
+                  )}
+                </div>
 
+                <div>
+                  <label htmlFor="nature_of_processing" className="block text-sm font-medium text-gray-700">
+                    Nature of Processing <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="nature_of_processing"
+                    name="nature_of_processing"
+                    value={formData.nature_of_processing}
+                    onChange={handleInputChange}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.nature_of_processing ? 'border-red-300' : 'border-gray-300'}`}
+                    placeholder="Enter nature of processing"
+                    disabled={isSubmitting}
+                  />
+                  {errors.nature_of_processing && (
+                    <p className="mt-1 text-sm text-red-600">{errors.nature_of_processing}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="hsn_code" className="block text-sm font-medium text-gray-700">
                       HSN Code <span className="text-red-500">*</span>
@@ -546,14 +561,15 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                       name="hsn_code"
                       value={formData.hsn_code}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.hsn_code ? 'border-red-300' : 'border-gray-300'}`}
                       placeholder="Enter HSN code"
                       disabled={isSubmitting}
                     />
+                    {errors.hsn_code && (
+                      <p className="mt-1 text-sm text-red-600">{errors.hsn_code}</p>
+                    )}
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
                       Quantity <span className="text-red-500">*</span>
@@ -564,9 +580,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                       name="quantity"
                       value={formData.quantity}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.quantity ? 'border-red-300' : 'border-gray-300'
-                      }`}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.quantity ? 'border-red-300' : 'border-gray-300'}`}
                       placeholder="Enter quantity"
                       min="1"
                       disabled={isSubmitting}
@@ -575,7 +589,9 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                       <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>
                     )}
                   </div>
+                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="unit_rate" className="block text-sm font-medium text-gray-700">
                       Unit Rate <span className="text-red-500">*</span>
@@ -586,9 +602,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                       name="unit_rate"
                       value={formData.unit_rate}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                        errors.unit_rate ? 'border-red-300' : 'border-gray-300'
-                      }`}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.unit_rate ? 'border-red-300' : 'border-gray-300'}`}
                       placeholder="Enter unit rate"
                       disabled={isSubmitting}
                     />
@@ -596,27 +610,25 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                       <p className="mt-1 text-sm text-red-600">{errors.unit_rate}</p>
                     )}
                   </div>
-                </div>
 
-                <div>
-                  <label htmlFor="total" className="block text-sm font-medium text-gray-700">
-                    Total Amount <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="total"
-                    name="total"
-                    value={formData.total}
-                    onChange={handleInputChange}
-                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.total ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter total amount"
-                    disabled={isSubmitting}
-                  />
-                  {errors.total && (
-                    <p className="mt-1 text-sm text-red-600">{errors.total}</p>
-                  )}
+                  <div>
+                    <label htmlFor="total" className="block text-sm font-medium text-gray-700">
+                      Total Amount <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="total"
+                      name="total"
+                      value={formData.total}
+                      onChange={handleInputChange}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.total ? 'border-red-300' : 'border-gray-300'}`}
+                      placeholder="Enter total amount"
+                      disabled={isSubmitting}
+                    />
+                    {errors.total && (
+                      <p className="mt-1 text-sm text-red-600">{errors.total}</p>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -628,9 +640,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                     name="status"
                     value={formData.status}
                     onChange={handleInputChange}
-                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${
-                      errors.status ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.status ? 'border-red-300' : 'border-gray-300'}`}
                     disabled={isSubmitting}
                   >
                     <option value="">Select status</option>
@@ -647,7 +657,7 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="challan_date" className="block text-sm font-medium text-gray-700">
-                      Challan Date
+                      Challan Date <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="date"
@@ -655,14 +665,55 @@ const EditDeliveryChallanModal: React.FC<EditDeliveryChallanModalProps> = ({ isO
                       name="challan_date"
                       value={formatDateForInput(formData.challan_date)}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.challan_date ? 'border-red-300' : 'border-gray-300'}`}
                       disabled={isSubmitting}
                     />
+                    {errors.challan_date && (
+                      <p className="mt-1 text-sm text-red-600">{errors.challan_date}</p>
+                    )}
                   </div>
+
+                  <div>
+                    <label htmlFor="signature" className="block text-sm font-medium text-gray-700">
+                      Authorized Signature <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="signature"
+                      name="signature"
+                      value={formData.signature || ''}
+                      onChange={handleInputChange}
+                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.signature ? 'border-red-300' : 'border-gray-300'}`}
+                      placeholder="Enter authorized signature"
+                      disabled={isSubmitting}
+                    />
+                    {errors.signature && (
+                      <p className="mt-1 text-sm text-red-600">{errors.signature}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+                    Notes <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    value={formData.notes || ''}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-900 focus:border-blue-900 sm:text-sm ${errors.notes ? 'border-red-300' : 'border-gray-300'}`}
+                    placeholder="Enter any additional notes"
+                    disabled={isSubmitting}
+                  />
+                  {errors.notes && (
+                    <p className="mt-1 text-sm text-red-600">{errors.notes}</p>
+                  )}
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
               <button
                 type="submit"
